@@ -1,0 +1,13 @@
+# .goreleaser.yml
+project_name: truco
+builds:
+  - id: "truco"
+    main: "./main.go"
+    binary: "truco"
+    goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - 386
