@@ -21,6 +21,7 @@ func serve(port string) {
 	NewServer(port).Start()
 }
 
+// TODO: resources shouldn't be shared between goroutines! It's not panicking due to insufficient testing for now.
 type server struct {
 	gameState *truco.GameState
 	port      string

@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+// TODO: there's a bug that exists in most Truco games: it should be possible to throw a card and say truco at the same time
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("usage: truco server|player1|player2 [address]")
