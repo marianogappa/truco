@@ -1,9 +1,5 @@
 package truco
 
-import (
-	"fmt"
-)
-
 type CardRevealSequenceStep struct {
 	card     Card
 	playerID int
@@ -32,14 +28,45 @@ func (crs CardRevealSequence) CanAddStep(step CardRevealSequenceStep, g GameStat
 		return step.playerID == g.RoundTurnPlayerID
 	case 1: // If there is one step, the second step must be from the round's second player
 		return step.playerID == g.RoundTurnOpponentPlayerID()
-	case 2: // If there are two steps, the third step must be from the first faceoff winner
+	case 2: // If there are two steps, the third step must be from the first faceoff winner, or round's first player if tied
+		if crs.BistepWinners[0] == -1 {
+			return step.playerID == g.RoundTurnPlayerID
+		}
 		return step.playerID == crs.BistepWinners[0]
-	case 3: // If there are 3 steps, the 4th step must be from the first faceoff winner's opponent
+	case 3: // If there are 3 steps, the 4th step must be from the first faceoff winner's opponent, or round's second player if tied
+		if crs.BistepWinners[0] == -1 {
+			return step.playerID == g.RoundTurnOpponentPlayerID()
+		}
 		return step.playerID == g.OpponentOf(crs.BistepWinners[0])
-	case 4: // If there are 4 steps, the 5th step must be from the second faceoff winner
-		return step.playerID == crs.BistepWinners[1]
-	case 5: // If there are 5 steps, the 6th step must be from the second faceoff winner's opponent
-		return step.playerID == g.OpponentOf(crs.BistepWinners[1])
+	case 4:
+		// This can get tricky so let's outline the cases
+		var (
+			mano  = g.RoundTurnPlayerID
+			other = g.OpponentOf(g.RoundTurnPlayerID)
+			tie   = -1
+		)
+
+		nextPlayer := map[[2]int]int{
+			{tie, tie}:     mano,
+			{tie, mano}:    -1, // mano wins
+			{tie, other}:   -1, // other wins
+			{mano, tie}:    -1, // mano wins
+			{mano, mano}:   -1, // mano wins
+			{mano, other}:  other,
+			{other, tie}:   -1, // other wins
+			{other, mano}:  mano,
+			{other, other}: -1, // other wins
+		}[[2]int{crs.BistepWinners[0], crs.BistepWinners[1]}]
+
+		if nextPlayer == -1 {
+			return false
+		}
+
+		return step.playerID == nextPlayer
+	case 5:
+		// The last card can only be thrown by the opponent of whoever played the previous card
+		lastStep := crs.Steps[len(crs.Steps)-2]
+		return step.playerID != lastStep.playerID
 	}
 
 	// if 6 cards were revealed, the sequence is finished (unreachable due to finishing)
@@ -58,15 +85,17 @@ func (crs *CardRevealSequence) AddStep(step CardRevealSequenceStep, g GameState)
 		return true
 	}
 
+	// If there are 2 steps, compare the cards and compute the winner (or tie)
 	if len(crs.Steps)%2 == 0 && len(crs.Steps) > 0 {
 		previousStep := crs.Steps[len(crs.Steps)-2]
 		comparisonResult := step.card.CompareTrucoScore(previousStep.card)
-		if comparisonResult == 1 || (comparisonResult == 0 && step.playerID == g.RoundTurnPlayerID) {
-			fmt.Printf("Player %d won the faceoff, because their card %v beats %d's card %v\n", step.playerID, step.card, previousStep.playerID, previousStep.card)
+		switch comparisonResult {
+		case 1:
 			crs.BistepWinners = append(crs.BistepWinners, step.playerID)
-		} else {
-			fmt.Printf("Player %d won the faceoff, because their card %v beats %d's card %v\n", previousStep.playerID, previousStep.card, step.playerID, step.card)
+		case -1:
 			crs.BistepWinners = append(crs.BistepWinners, previousStep.playerID)
+		case 0:
+			crs.BistepWinners = append(crs.BistepWinners, -1)
 		}
 	}
 
@@ -77,9 +106,23 @@ func (crs CardRevealSequence) IsFinished() bool {
 	if len(crs.BistepWinners) < 2 {
 		return false
 	}
-	if len(crs.BistepWinners) == 2 && crs.BistepWinners[0] != crs.BistepWinners[1] {
-		return false
+	// If there are two finished faceoffs
+	if len(crs.BistepWinners) == 2 {
+		// If each one won one, not finished
+		if crs.BistepWinners[0] != crs.BistepWinners[1] && crs.BistepWinners[0] != -1 && crs.BistepWinners[1] != -1 {
+			return false
+		}
+		// If one of them won both, finished
+		if crs.BistepWinners[0] == crs.BistepWinners[1] && crs.BistepWinners[0] != -1 {
+			return true
+		}
+		// If both are tied, not finished
+		if crs.BistepWinners[0] == crs.BistepWinners[1] && crs.BistepWinners[0] == -1 {
+			return false
+		}
 	}
+
+	// Otherwise, finished
 	return true
 }
 
@@ -100,12 +143,18 @@ func (crs CardRevealSequence) WinnerPlayerID() int {
 	}
 	winsByPlayer := map[int]int{}
 	for _, winner := range crs.BistepWinners {
+		if winner == -1 {
+			continue
+		}
 		winsByPlayer[winner]++
 	}
+	winningPlayerID := -1
+	mostWins := 0
 	for playerID, wins := range winsByPlayer {
-		if wins >= 2 {
-			return playerID
+		if wins > mostWins {
+			winningPlayerID = playerID
+			mostWins = wins
 		}
 	}
-	return -1 // Unreachable
+	return winningPlayerID
 }

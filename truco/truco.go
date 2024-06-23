@@ -13,19 +13,20 @@ type GameState struct {
 	Hands             map[int]*Hand `json:"hands"`
 	Scores            map[int]int   `json:"scores"`
 
-	PossibleActions      []string            `json:"possibleActionTypes"`
-	EnvidoSequence       *EnvidoSequence     `json:"envidoSequence"`
-	TrucoSequence        *TrucoSequence      `json:"trucoSequence"`
-	CardRevealSequence   *CardRevealSequence `json:"cardRevealSequence"`
-	EnvidoFinished       bool                `json:"envidoFinished"`
-	EnvidoWinnerPlayerID int                 `json:"envidoWinnerPlayerID"`
-	ValidSonBuenas       bool                `json:"validSonBuenas"`
-	ValidSonMejores      bool                `json:"validSonMejores"`
-	RoundFinished        bool                `json:"roundFinished"`
-	IsEnded              bool                `json:"isEnded"`
-	WinnerPlayerID       int                 `json:"winnerPlayerID"`
-	CurrentRoundResult   RoundResult         `json:"currentRoundResult"`
-	RoundJustStarted     bool                `json:"roundJustStarted"`
+	PossibleActions          []string            `json:"possibleActionTypes"`
+	EnvidoSequence           *EnvidoSequence     `json:"envidoSequence"`
+	TrucoSequence            *TrucoSequence      `json:"trucoSequence"`
+	CardRevealSequence       *CardRevealSequence `json:"cardRevealSequence"`
+	EnvidoFinished           bool                `json:"envidoFinished"`
+	EnvidoWinnerPlayerID     int                 `json:"envidoWinnerPlayerID"`
+	ValidSonBuenas           bool                `json:"validSonBuenas"`
+	ValidSonMejores          bool                `json:"validSonMejores"`
+	RoundFinished            bool                `json:"roundFinished"`
+	IsEnded                  bool                `json:"isEnded"`
+	WinnerPlayerID           int                 `json:"winnerPlayerID"`
+	CurrentRoundResult       RoundResult         `json:"currentRoundResult"`
+	RoundJustStarted         bool                `json:"roundJustStarted"`
+	TrucoQuieroOwnerPlayerId int                 `json:"trucoQuieroOwnerPlayerId"`
 
 	Actions              []json.RawMessage `json:"actions"`
 	HandsDealt           []map[int]*Hand   `json:"handsDealt"`
@@ -91,6 +92,7 @@ func (g *GameState) StartNewRound() {
 	g.ValidSonBuenas = true
 	g.ValidSonMejores = true
 	g.RoundFinished = false
+	g.TrucoQuieroOwnerPlayerId = -1
 	g.PossibleActions = g.CalculatePossibleActions()
 }
 

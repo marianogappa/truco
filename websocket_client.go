@@ -10,6 +10,8 @@ import (
 )
 
 func player(playerID int, address string) {
+	ui := NewUI()
+
 	err := termbox.Init()
 	if err != nil {
 		panic(err)
@@ -37,8 +39,13 @@ func player(playerID int, address string) {
 			return
 		}
 
+		if gameState.IsEnded {
+			_ = ui.printState(playerID, *gameState, PRINT_MODE_END)
+			return
+		}
+
 		if gameState.RoundNumber != lastRound && lastRound != 0 {
-			err := printState(playerID, *gameState, true, true)
+			err := ui.printState(playerID, *gameState, PRINT_MODE_SHOW_ROUND_RESULT)
 			if err != nil {
 				log.Println(err)
 				return
@@ -47,7 +54,7 @@ func player(playerID int, address string) {
 		lastRound = gameState.RoundNumber
 
 		if gameState.TurnPlayerID != playerID {
-			err := printState(playerID, *gameState, false, false)
+			err := ui.printState(playerID, *gameState, PRINT_MODE_NORMAL)
 			if err != nil {
 				log.Println(err)
 				return
@@ -55,7 +62,7 @@ func player(playerID int, address string) {
 			continue
 		}
 
-		action, err := play(playerID, *gameState)
+		action, err := ui.play(playerID, *gameState)
 		if err != nil {
 			fmt.Println("Invalid action:", err)
 			break

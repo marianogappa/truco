@@ -57,6 +57,7 @@ func (a ActionSayTrucoQuiero) Run(g *GameState) error {
 		return errActionNotPossible
 	}
 	g.TrucoSequence.AddStep(a.GetName())
+	g.TrucoQuieroOwnerPlayerId = g.TurnPlayerID
 	return nil
 }
 

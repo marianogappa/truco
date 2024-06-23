@@ -16,7 +16,24 @@ func (g GameState) AnyTrucoActionIsPossible(a Action) bool {
 	if !g.EnvidoSequence.IsEmpty() && !g.EnvidoFinished {
 		return false
 	}
+	// Only the player who said "quiero" last can raise the stakes, unless quiero hasn't been said yet,
+	// which can only happen if the last action is "truco"
+	if !g.IsLastActionOfName(SAY_TRUCO) && (a.GetName() == SAY_QUIERO_RETRUCO || a.GetName() == SAY_QUIERO_VALE_CUATRO) && g.TrucoQuieroOwnerPlayerId != g.TurnPlayerID {
+		return false
+	}
 	return g.TrucoSequence.CanAddStep(a.GetName())
+}
+
+func (g GameState) IsLastActionOfName(name string) bool {
+	if len(g.Actions) == 0 {
+		return false
+	}
+	lastActionBs := g.Actions[len(g.Actions)-1]
+	lastAction, err := DeserializeAction(lastActionBs)
+	if err != nil {
+		return false
+	}
+	return lastAction.GetName() == name
 }
 
 func (g *GameState) AnyTrucoActionRunAction(at Action) error {

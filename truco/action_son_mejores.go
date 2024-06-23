@@ -9,10 +9,23 @@ func (a ActionSaySonMejores) IsPossible(g GameState) bool {
 	if g.EnvidoFinished {
 		return false
 	}
-	// TODO: should I allow people to lie?
-	if g.Hands[g.TurnPlayerID].EnvidoScore() < g.Hands[g.OpponentOf(g.TurnPlayerID)].EnvidoScore() {
+	var (
+		mano       = g.RoundTurnPlayerID
+		me         = g.TurnPlayerID
+		other      = g.OpponentOf(g.TurnPlayerID)
+		meScore    = g.Hands[me].EnvidoScore()
+		otherScore = g.Hands[other].EnvidoScore()
+	)
+
+	// TODO: should I allow people to lose voluntarily?
+
+	if meScore < otherScore {
 		return false
 	}
+	if meScore == otherScore && mano != me {
+		return false
+	}
+
 	return g.EnvidoSequence.CanAddStep(a.GetName())
 }
 

@@ -16,7 +16,8 @@ func (a ActionSayMeVoyAlMazo) IsPossible(g GameState) bool {
 
 func (a ActionSayMeVoyAlMazo) Run(g *GameState) error {
 	var cost int
-	if g.EnvidoSequence.IsEmpty() && g.TrucoSequence.IsEmpty() && g.EnvidoFinished {
+	if g.TrucoSequence.IsEmpty() && g.EnvidoFinished {
+		// Envido is finished, so either the envido cost was updated already, or it's zero
 		cost = 1
 	}
 	if g.EnvidoSequence.IsEmpty() && g.TrucoSequence.IsEmpty() && !g.EnvidoFinished {

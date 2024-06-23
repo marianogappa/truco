@@ -9,10 +9,24 @@ func (a ActionSaySonBuenas) IsPossible(g GameState) bool {
 	if g.EnvidoFinished {
 		return false
 	}
+
+	var (
+		mano       = g.RoundTurnPlayerID
+		me         = g.TurnPlayerID
+		other      = g.OpponentOf(g.TurnPlayerID)
+		meScore    = g.Hands[me].EnvidoScore()
+		otherScore = g.Hands[other].EnvidoScore()
+	)
+
 	// TODO: should I allow people to lose voluntarily?
-	if g.Hands[g.TurnPlayerID].EnvidoScore() > g.Hands[g.OpponentOf(g.TurnPlayerID)].EnvidoScore() {
+
+	if meScore > otherScore {
 		return false
 	}
+	if meScore == otherScore && mano == me {
+		return false
+	}
+
 	return g.EnvidoSequence.CanAddStep(a.GetName())
 }
 

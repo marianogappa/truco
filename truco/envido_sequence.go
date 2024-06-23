@@ -115,7 +115,7 @@ func (es *EnvidoSequence) IsFinished() bool {
 		return false
 	}
 	last := es.Sequence[len(es.Sequence)-1]
-	return last == SAY_SON_BUENAS || last == SAY_SON_MEJORES
+	return last == SAY_SON_BUENAS || last == SAY_SON_MEJORES || last == SAY_ENVIDO_NO_QUIERO
 }
 
 func (es EnvidoSequence) Cost(currentPlayerScore int, otherPlayerScore int) (int, error) {

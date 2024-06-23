@@ -9,11 +9,19 @@ func (a ActionSayFaltaEnvido) IsPossible(g GameState) bool { return g.AnyEnvidoA
 func (a ActionSayRealEnvido) IsPossible(g GameState) bool  { return g.AnyEnvidoActionTypeIsPossible(a) }
 
 func (a ActionSayEnvido) Run(g *GameState) error      { return g.AnyEnvidoActionTypeRunAction(a) }
-func (a ActionSayFaltaEnvido) Run(g *GameState) error { return g.AnyTrucoActionRunAction(a) }
+func (a ActionSayFaltaEnvido) Run(g *GameState) error { return g.AnyEnvidoActionTypeRunAction(a) }
 func (a ActionSayRealEnvido) Run(g *GameState) error  { return g.AnyEnvidoActionTypeRunAction(a) }
 
 func (g GameState) AnyEnvidoActionTypeIsPossible(a Action) bool {
 	if g.EnvidoFinished {
+		return false
+	}
+	// If there was a "truco" and an answer to it, regardless when, envido is not possible anymore.
+	if len(g.TrucoSequence.Sequence) >= 2 {
+		return false
+	}
+	// If the initial two cards have been revealed, envido is finished
+	if len(g.CardRevealSequence.Steps) > 2 {
 		return false
 	}
 	return g.EnvidoSequence.CanAddStep(a.GetName())

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -11,8 +12,22 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
-func play(playerID int, gameState truco.GameState) (truco.Action, error) {
-	err := printState(playerID, gameState, true, false)
+type ui struct {
+	wantKeyPressCh chan struct{}
+	sendKeyPressCh chan rune
+}
+
+func NewUI() *ui {
+	ui := &ui{
+		wantKeyPressCh: make(chan struct{}),
+		sendKeyPressCh: make(chan rune),
+	}
+	ui.startKeyEventLoop()
+	return ui
+}
+
+func (u *ui) play(playerID int, gameState truco.GameState) (truco.Action, error) {
+	err := u.printState(playerID, gameState, PRINT_MODE_NORMAL)
 	if err != nil {
 		return nil, err
 	}
@@ -26,43 +41,35 @@ func play(playerID int, gameState truco.GameState) (truco.Action, error) {
 		input  string
 	)
 	for {
-		input, err = readChar()
+		num := u.pressAnyNumber()
+		var actionName string
+		var err error
+		actionName, input, err = numToAction(num, gameState)
 		if err != nil {
-			return nil, err
+			continue
 		}
-
-		if input == "exit" || input == "quit" {
-			break
+		if actionName == truco.SAY_ENVIDO_QUIERO || actionName == truco.SAY_SON_BUENAS || actionName == truco.SAY_SON_MEJORES {
+			input = fmt.Sprintf(`{"name":"%v","score":%d}`, actionName, gameState.Hands[gameState.TurnPlayerID].EnvidoScore())
 		}
-		num, err := strconv.Atoi(input)
-		if err == nil {
-			var actionName string
-			var err error
-			actionName, input, err = numToAction(num, gameState)
+		if actionName == "reveal_card" {
+			err := u.printState(playerID, gameState, PRINT_MODE_WHICH_CARD_REVEAL)
 			if err != nil {
-				continue
+				return nil, err
 			}
-			if actionName == truco.SAY_ENVIDO_QUIERO || actionName == truco.SAY_SON_BUENAS || actionName == truco.SAY_SON_MEJORES {
-				input = fmt.Sprintf(`{"name":"%v","score":%d}`, actionName, gameState.Hands[gameState.TurnPlayerID].EnvidoScore())
+			var card truco.Card
+			for {
+				which := u.pressAnyNumber()
+				if which > len(gameState.Hands[gameState.TurnPlayerID].Unrevealed) {
+					continue
+				}
+				if which == 0 {
+					return u.play(playerID, gameState)
+				}
+				card = gameState.Hands[gameState.TurnPlayerID].Unrevealed[which-1]
+				break
 			}
-			if actionName == "reveal_card" {
-				err := printState(playerID, gameState, false, false)
-				if err != nil {
-					return nil, err
-				}
-				input, err = readChar()
-				if err != nil {
-					return nil, err
-				}
-
-				which, err := strconv.Atoi(input)
-				if err != nil {
-					return nil, err
-				}
-				card := gameState.Hands[gameState.TurnPlayerID].Unrevealed[which-1]
-				jsonCard, _ := json.Marshal(card)
-				input = fmt.Sprintf(`{"name":"reveal_card","card":%v}`, string(jsonCard))
-			}
+			jsonCard, _ := json.Marshal(card)
+			input = fmt.Sprintf(`{"name":"reveal_card","card":%v}`, string(jsonCard))
 		}
 
 		action, err = truco.DeserializeAction([]byte(input))
@@ -75,33 +82,6 @@ func play(playerID int, gameState truco.GameState) (truco.Action, error) {
 	return action, nil
 }
 
-func readChar() (string, error) {
-	event := termbox.PollEvent()
-
-	if event.Type != termbox.EventKey {
-		return readChar()
-	}
-
-	if event.Key == termbox.KeyEsc || event.Key == termbox.KeyCtrlC || event.Key == termbox.KeyCtrlD || event.Key == termbox.KeyCtrlZ || event.Ch == 'q' {
-		os.Exit(0)
-	}
-
-	switch event.Ch {
-	case '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		return string(event.Ch), nil
-	}
-
-	return readChar()
-}
-
-func readAnyKey() {
-	event := termbox.PollEvent()
-
-	if event.Type != termbox.EventKey && event.Key != termbox.KeySpace {
-		readAnyKey()
-	}
-}
-
 func numToAction(num int, state truco.GameState) (string, string, error) {
 	actions := state.CalculatePossibleActions()
 	if num > len(actions) {
@@ -111,7 +91,16 @@ func numToAction(num int, state truco.GameState) (string, string, error) {
 	return actions[num-1], fmt.Sprintf(`{"name":"%v"}`, actions[num-1]), nil
 }
 
-func printState(playerID int, state truco.GameState, initialActions bool, showRoundResult bool) error {
+type printMode int
+
+const (
+	PRINT_MODE_NORMAL printMode = iota
+	PRINT_MODE_WHICH_CARD_REVEAL
+	PRINT_MODE_SHOW_ROUND_RESULT
+	PRINT_MODE_END
+)
+
+func (u *ui) printState(playerID int, state truco.GameState, mode printMode) error {
 	err := termbox.Clear(termbox.ColorWhite, termbox.ColorBlack)
 	if err != nil {
 		return err
@@ -124,13 +113,13 @@ func printState(playerID int, state truco.GameState, initialActions bool, showRo
 		hand   = *state.Hands[them]
 	)
 
-	if showRoundResult {
+	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
 		hand = *state.HandsDealt[len(state.HandsDealt)-2][them]
 	}
 
 	var (
 		unrevealed = strings.Repeat("[] ", len(hand.Unrevealed))
-		revealed   = getCardsString(hand.Revealed, false)
+		revealed   = getCardsString(hand.Revealed, false, false)
 	)
 
 	printAt(0, 0, unrevealed)
@@ -142,24 +131,31 @@ func printState(playerID int, state truco.GameState, initialActions bool, showRo
 
 	hand = *state.Hands[you]
 
-	if showRoundResult {
+	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
 		hand = *state.HandsDealt[len(state.HandsDealt)-2][you]
 	}
 
-	unrevealed = getCardsString(hand.Unrevealed, false)
-	revealed = getCardsString(hand.Revealed, false)
+	unrevealed = getCardsString(hand.Unrevealed, false, false)
+	revealed = getCardsString(hand.Revealed, false, false)
 
 	printAt(0, my/2+3, revealed)
 	printAt(0, my-4, unrevealed)
 
-	if !showRoundResult {
+	switch mode {
+	case PRINT_MODE_NORMAL, PRINT_MODE_WHICH_CARD_REVEAL:
 		lastActionString, err := getLastActionString(you, state)
 		if err != nil {
 			return err
 		}
 
 		printAt(0, my/2, lastActionString)
-	} else {
+	case PRINT_MODE_SHOW_ROUND_RESULT:
+		lastActionString, err := getActionString(state.Actions[len(state.Actions)-1], state.ActionOwnerPlayerIDs[len(state.ActionOwnerPlayerIDs)-1], you)
+		if err != nil {
+			return err
+		}
+
+		printAt(0, my/2, lastActionString)
 		lastRoundResult := state.RoundResults[len(state.RoundResults)-1]
 
 		envidoPart := "envido was not played"
@@ -181,18 +177,29 @@ func printState(playerID int, state truco.GameState, initialActions bool, showRo
 			trucoWinner,
 			lastRoundResult.TrucoPoints,
 		)
-		printAt(0, my/2, result)
+		printAt(0, my/2+1, result)
+	case PRINT_MODE_END:
+		lastActionString, err := getActionString(state.Actions[len(state.Actions)-1], state.ActionOwnerPlayerIDs[len(state.ActionOwnerPlayerIDs)-1], you)
+		if err != nil {
+			return err
+		}
+
+		if playerID == state.WinnerPlayerID {
+			printAt(0, my/2, fmt.Sprintf("%v You won 🥰!", lastActionString))
+		} else {
+			printAt(0, my/2, fmt.Sprintf("%v You lost 😭!", lastActionString))
+		}
 	}
 
-	if showRoundResult {
+	if mode == PRINT_MODE_SHOW_ROUND_RESULT || mode == PRINT_MODE_END {
 		printAt(0, my-2, "Press any key to continue...")
 		termbox.Flush()
-		readAnyKey()
+		u.pressAnyKey()
 		return nil
 	}
 
 	if state.TurnPlayerID == playerID {
-		if initialActions {
+		if mode == PRINT_MODE_NORMAL {
 			printAt(0, my-2, "Available Actions: ")
 			actionsString := ""
 			for i, action := range state.PossibleActions {
@@ -205,9 +212,9 @@ func printState(playerID int, state truco.GameState, initialActions bool, showRo
 				actionsString += fmt.Sprintf("%d. %s, ", i+1, action)
 			}
 			printAt(0, my-1, actionsString)
-		} else {
+		} else if mode == PRINT_MODE_WHICH_CARD_REVEAL {
 			printAt(0, my-2, "Which card do you want to reveal: ")
-			unrevealed = getCardsString(hand.Unrevealed, true)
+			unrevealed = getCardsString(hand.Unrevealed, true, true)
 			printAt(0, my-1, unrevealed)
 		}
 	} else {
@@ -232,7 +239,7 @@ func printUpToAt(x, y int, s string) {
 	}
 }
 
-func getCardsString(cards []truco.Card, withNumbers bool) string {
+func getCardsString(cards []truco.Card, withNumbers bool, withBack bool) string {
 	var cs []string
 	for i, card := range cards {
 		if withNumbers {
@@ -240,6 +247,9 @@ func getCardsString(cards []truco.Card, withNumbers bool) string {
 		} else {
 			cs = append(cs, getCardString(card))
 		}
+	}
+	if withBack {
+		cs = append(cs, "0. Back")
 	}
 	return strings.Join(cs, " ")
 }
@@ -325,4 +335,48 @@ func getActionString(lastActionBs json.RawMessage, lastActionOwnerPlayerID int, 
 	}
 
 	return fmt.Sprintf("%v %v\n", who, what), nil
+}
+
+func (u *ui) startKeyEventLoop() {
+	keyPressesCh := make(chan termbox.Event)
+	go func() {
+		for {
+			event := termbox.PollEvent()
+			if event.Type != termbox.EventKey {
+				continue
+			}
+			if event.Key == termbox.KeyEsc || event.Key == termbox.KeyCtrlC || event.Key == termbox.KeyCtrlD || event.Key == termbox.KeyCtrlZ || event.Ch == 'q' {
+				termbox.Close()
+				log.Println("Chau!")
+				os.Exit(0)
+			}
+			keyPressesCh <- event
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-keyPressesCh:
+			case <-u.wantKeyPressCh:
+				event := <-keyPressesCh
+				u.sendKeyPressCh <- event.Ch
+			}
+		}
+	}()
+}
+
+func (u *ui) pressAnyKey() {
+	u.wantKeyPressCh <- struct{}{}
+	<-u.sendKeyPressCh
+}
+
+func (u *ui) pressAnyNumber() int {
+	u.wantKeyPressCh <- struct{}{}
+	r := <-u.sendKeyPressCh
+	num, err := strconv.Atoi(string(r))
+	if err != nil {
+		return u.pressAnyNumber()
+	}
+	return num
 }
