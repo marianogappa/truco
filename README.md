@@ -4,7 +4,7 @@ Truco argentino implementation, using websocket-based client/server architecture
 
 <img width="1512" alt="Screenshot 2024-06-23 at 19 26 11" src="https://github.com/marianogappa/truco/assets/1078546/881e7204-f1a6-4de2-a0b5-60faa43b4fac">
 
-## Installation
+### Installation
 
 Either install using Go
 
@@ -14,7 +14,7 @@ $ go install https://github.com/marianogappa/truco@latest
 
 Or download the [latest release binary](https://github.com/marianogappa/truco/releases) for your OS.
 
-## Usage
+### Usage
 
 Start a server
 
@@ -38,7 +38,7 @@ $ truco player1
 $ truco player2
 ```
 
-## Playing with someone else over the Internet
+### Playing with someone else over the Internet
 
 Whoever starts the server may expose it to the Internet somehow, e.g. via `cloudflared` tunnels
 
@@ -66,22 +66,22 @@ $ truco player1 retail-curves-bernard-affairs.trycloudflare.com
 $ truco player2 retail-curves-bernard-affairs.trycloudflare.com
 ```
 
-## Project status
+### Project status
 
 It mostly works well, but it's not bug-free yet. Needs a little more battle-test. Help?
 
-## Reconnect after issue
+### Reconnect after issue
 
 If the server dies, state is gone. If client dies, you can simply reconnect to the same server and game goes on.
 
-## I don't like your UI
+### I don't like your UI
 
 It's just an example UI. I encourage you to implement a web-based UI (that's you @devblac). You may browse the documentation and the existing UI to guide your implementation.
 
-## Known issues / limitations
+### Known issues / limitations
 
 - Don't resize your terminal. This is a go-termbox issue. Also, have a terminal with a decent viewport. That is on me mostly.
 
-## Issues / Improvements
+### Issues / Improvements
 
 Please do [create issues](https://github.com/marianogappa/truco/issues) and send PRs. Also feel free to reach me for comments / discussions. I'm not hard to find.
