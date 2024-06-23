@@ -252,33 +252,33 @@ func DeserializeAction(bs []byte) (Action, error) {
 
 	var action Action
 	switch actionName.Name {
-	case "reveal_card":
+	case REVEAL_CARD:
 		action = &ActionRevealCard{}
-	case "say_envido":
+	case SAY_ENVIDO:
 		action = &ActionSayEnvido{}
-	case "say_real_envido":
+	case SAY_REAL_ENVIDO:
 		action = &ActionSayRealEnvido{}
-	case "say_falta_envido":
+	case SAY_FALTA_ENVIDO:
 		action = &ActionSayFaltaEnvido{}
-	case "say_envido_quiero":
+	case SAY_ENVIDO_QUIERO:
 		action = &ActionSayEnvidoQuiero{}
-	case "say_envido_no_quiero":
+	case SAY_ENVIDO_NO_QUIERO:
 		action = &ActionSayEnvidoNoQuiero{}
-	case "say_truco":
+	case SAY_TRUCO:
 		action = &ActionSayTruco{}
-	case "say_truco_quiero":
+	case SAY_TRUCO_QUIERO:
 		action = &ActionSayTrucoQuiero{}
-	case "say_truco_no_quiero":
+	case SAY_TRUCO_NO_QUIERO:
 		action = &ActionSayTrucoNoQuiero{}
-	case "say_quiero_retruco":
+	case SAY_QUIERO_RETRUCO:
 		action = &ActionSayQuieroRetruco{}
-	case "say_quiero_vale_cuatro":
+	case SAY_QUIERO_VALE_CUATRO:
 		action = &ActionSayQuieroValeCuatro{}
-	case "say_son_buenas":
+	case SAY_SON_BUENAS:
 		action = &ActionSaySonBuenas{}
-	case "say_son_mejores":
+	case SAY_SON_MEJORES:
 		action = &ActionSaySonMejores{}
-	case "say_me_voy_al_mazo":
+	case SAY_ME_VOY_AL_MAZO:
 		action = &ActionSayMeVoyAlMazo{}
 	default:
 		return nil, fmt.Errorf("unknown action type %v", actionName.Name)

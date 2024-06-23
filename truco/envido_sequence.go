@@ -14,6 +14,8 @@ const (
 	SAY_ENVIDO_NO_QUIERO = "say_envido_no_quiero"
 	SAY_SON_BUENAS       = "say_son_buenas"
 	SAY_SON_MEJORES      = "say_son_mejores"
+	SAY_ME_VOY_AL_MAZO   = "say_me_voy_al_mazo"
+	REVEAL_CARD          = "reveal_card"
 
 	COST_NOT_READY    = -1
 	COST_FALTA_ENVIDO = -2

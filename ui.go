@@ -125,9 +125,18 @@ func (u *ui) printState(playerID int, state truco.GameState, mode printMode) err
 	printAt(0, 0, unrevealed)
 	printAt(0, my/2-3, revealed)
 
-	printUpToAt(mx-1, 0, fmt.Sprintf("Round %d", state.RoundNumber))
-	printUpToAt(mx-1, 1, fmt.Sprintf("You %d points", state.Scores[you]))
-	printUpToAt(mx-1, 2, fmt.Sprintf("Them %d points", state.Scores[them]))
+	printUpToAt(mx-1, 0, fmt.Sprintf("Mano número %d", state.RoundNumber))
+
+	youMano := ""
+	themMano := ""
+	if state.TurnPlayerID == you {
+		youMano = " (mano)"
+	} else {
+		themMano = " (mano)"
+	}
+
+	printUpToAt(mx-1, 1, fmt.Sprintf("Vos%v %v", youMano, spanishScore(state.Scores[you])))
+	printUpToAt(mx-1, 2, fmt.Sprintf("Elle%v %v", themMano, spanishScore(state.Scores[them])))
 
 	hand = *state.Hands[you]
 
@@ -158,23 +167,28 @@ func (u *ui) printState(playerID int, state truco.GameState, mode printMode) err
 		printAt(0, my/2, lastActionString)
 		lastRoundResult := state.RoundResults[len(state.RoundResults)-1]
 
-		envidoPart := "envido was not played"
+		envidoPart := "el envido no se jugó"
 		if lastRoundResult.EnvidoWinnerPlayerID != -1 {
-			envidoWinner := "you"
+			envidoWinner := "vos"
+			won := "ganaste"
 			if lastRoundResult.EnvidoWinnerPlayerID == them {
-				envidoWinner = "they"
+				envidoWinner = "elle"
+				won = "ganó"
 			}
-			envidoPart = fmt.Sprintf("%v won %v envido points", envidoWinner, lastRoundResult.EnvidoPoints)
+			envidoPart = fmt.Sprintf("%v %v %v puntos por el envido", envidoWinner, won, lastRoundResult.EnvidoPoints)
 		}
-		trucoWinner := "you"
+		trucoWinner := "vos"
+		won := "ganaste"
 		if lastRoundResult.TrucoWinnerPlayerID == them {
-			trucoWinner = "they"
+			trucoWinner = "elle"
+			won = "ganó"
 		}
 
 		result := fmt.Sprintf(
-			"Round ended, %v and %v won %v truco points!",
+			"Terminó la mano, %v y %v %v %v puntos por el truco.",
 			envidoPart,
 			trucoWinner,
+			won,
 			lastRoundResult.TrucoPoints,
 		)
 		printAt(0, my/2+1, result)
@@ -185,14 +199,14 @@ func (u *ui) printState(playerID int, state truco.GameState, mode printMode) err
 		}
 
 		if playerID == state.WinnerPlayerID {
-			printAt(0, my/2, fmt.Sprintf("%v You won 🥰!", lastActionString))
+			printAt(0, my/2, fmt.Sprintf("%v Ganaste 🥰!", lastActionString))
 		} else {
-			printAt(0, my/2, fmt.Sprintf("%v You lost 😭!", lastActionString))
+			printAt(0, my/2, fmt.Sprintf("%v Perdiste 😭!", lastActionString))
 		}
 	}
 
 	if mode == PRINT_MODE_SHOW_ROUND_RESULT || mode == PRINT_MODE_END {
-		printAt(0, my-2, "Press any key to continue...")
+		printAt(0, my-2, "Presioná cualquier tecla para continuar...")
 		termbox.Flush()
 		u.pressAnyKey()
 		return nil
@@ -200,26 +214,20 @@ func (u *ui) printState(playerID int, state truco.GameState, mode printMode) err
 
 	if state.TurnPlayerID == playerID {
 		if mode == PRINT_MODE_NORMAL {
-			printAt(0, my-2, "Available Actions: ")
 			actionsString := ""
 			for i, action := range state.PossibleActions {
-				action := strings.TrimPrefix(action, "say_")
-				if strings.HasSuffix(action, "no_quiero") {
-					action = "no quiero"
-				} else if strings.HasSuffix(action, "_quiero") {
-					action = "quiero"
-				}
-				actionsString += fmt.Sprintf("%d. %s, ", i+1, action)
+				action := spanishAction(action, state)
+				actionsString += fmt.Sprintf("%d. %s   ", i+1, action)
 			}
-			printAt(0, my-1, actionsString)
+			printAt(0, my-2, actionsString)
 		} else if mode == PRINT_MODE_WHICH_CARD_REVEAL {
-			printAt(0, my-2, "Which card do you want to reveal: ")
+			printAt(0, my-2, "¿Cuál carta querés tirar?")
 			unrevealed = getCardsString(hand.Unrevealed, true, true)
 			printAt(0, my-1, unrevealed)
 		}
 	} else {
 		_, my := termbox.Size()
-		printAt(0, my-2, "Waiting for the other player...")
+		printAt(0, my-2, "Esperando al otro jugador...")
 	}
 
 	termbox.Flush()
@@ -227,15 +235,17 @@ func (u *ui) printState(playerID int, state truco.GameState, mode printMode) err
 }
 
 func printAt(x, y int, s string) {
-	for i, r := range s {
+	_s := []rune(s)
+	for i, r := range _s {
 		termbox.SetCell(x+i, y, r, termbox.ColorDefault, termbox.ColorDefault)
 	}
 }
 
 // Write so that the output ends at x, y
 func printUpToAt(x, y int, s string) {
-	for i, r := range s {
-		termbox.SetCell(x-len(s)+i, y, r, termbox.ColorDefault, termbox.ColorDefault)
+	_s := []rune(s)
+	for i, r := range _s {
+		termbox.SetCell(x-len(_s)+i, y, r, termbox.ColorDefault, termbox.ColorDefault)
 	}
 }
 
@@ -249,13 +259,13 @@ func getCardsString(cards []truco.Card, withNumbers bool, withBack bool) string 
 		}
 	}
 	if withBack {
-		cs = append(cs, "0. Back")
+		cs = append(cs, "0 Volver")
 	}
-	return strings.Join(cs, " ")
+	return strings.Join(cs, "  ")
 }
 
 func getCardString(card truco.Card) string {
-	return fmt.Sprintf("[  %v  %v]", card.Number, suitEmoji(card.Suit))
+	return fmt.Sprintf("[%v%v ]", card.Number, suitEmoji(card.Suit))
 }
 
 func suitEmoji(suit string) string {
@@ -275,10 +285,10 @@ func suitEmoji(suit string) string {
 
 func getLastActionString(playerID int, state truco.GameState) (string, error) {
 	if len(state.Actions) == 0 {
-		return "Game started!", nil
+		return "¡Empezó el juego!", nil
 	}
 	if state.RoundJustStarted {
-		return "Round started!", nil
+		return "¡Empezó la mano!", nil
 	}
 
 	lastActionBs := state.Actions[len(state.Actions)-1]
@@ -292,44 +302,48 @@ func getActionString(lastActionBs json.RawMessage, lastActionOwnerPlayerID int, 
 		return "", err
 	}
 
-	who := "You"
+	said := "dijiste"
+	revealed := "tiraste"
+	who := "Vos"
 	if playerID != lastActionOwnerPlayerID {
-		who = "They"
+		who = "Elle"
+		said = "dijo"
+		revealed = "tiró"
 	}
 
 	var what string
 	switch lastAction.GetName() {
-	case "reveal_card":
+	case truco.REVEAL_CARD:
 		action := lastAction.(*truco.ActionRevealCard)
-		what = fmt.Sprintf("revealed a %v!", getCardString(action.Card))
-	case "say_envido":
-		what = "said Envido!"
-	case "say_real_envido":
-		what = "said Real Envido!"
-	case "say_falta_envido":
-		what = "said Falta Envido!"
-	case "say_envido_quiero":
+		what = fmt.Sprintf("%v la carta %v", revealed, getCardString(action.Card))
+	case truco.SAY_ENVIDO:
+		what = fmt.Sprintf("%v envido", said)
+	case truco.SAY_REAL_ENVIDO:
+		what = fmt.Sprintf("%v real envido", said)
+	case truco.SAY_FALTA_ENVIDO:
+		what = fmt.Sprintf("%v falta envido!", said)
+	case truco.SAY_ENVIDO_QUIERO:
 		action := lastAction.(*truco.ActionSayEnvidoQuiero)
-		what = fmt.Sprintf("said Quiero with %d!", action.Score)
-	case "say_envido_no_quiero":
-		what = "said No Quiero!"
-	case "say_truco":
-		what = "said Truco!"
-	case "say_truco_quiero":
-		what = "said Quiero!"
-	case "say_truco_no_quiero":
-		what = "said No Quiero!"
-	case "say_quiero_retruco":
-		what = "said Quiero Retruco!"
-	case "say_quiero_vale_cuatro":
-		what = "said Quiero Vale Cuatro!"
-	case "say_son_buenas":
-		what = "said Son Buenas!"
-	case "say_son_mejores":
+		what = fmt.Sprintf("%v quiero con %d", said, action.Score)
+	case truco.SAY_ENVIDO_NO_QUIERO:
+		what = fmt.Sprintf("%v no quiero", said)
+	case truco.SAY_TRUCO:
+		what = fmt.Sprintf("%v truco", said)
+	case truco.SAY_TRUCO_QUIERO:
+		what = fmt.Sprintf("%v quiero", said)
+	case truco.SAY_TRUCO_NO_QUIERO:
+		what = fmt.Sprintf("%v no quiero", said)
+	case truco.SAY_QUIERO_RETRUCO:
+		what = fmt.Sprintf("%v quiero retruco", said)
+	case truco.SAY_QUIERO_VALE_CUATRO:
+		what = fmt.Sprintf("%v quiero vale cuatro", said)
+	case truco.SAY_SON_BUENAS:
+		what = fmt.Sprintf("%v son buenas", said)
+	case truco.SAY_SON_MEJORES:
 		action := lastAction.(*truco.ActionSaySonMejores)
-		what = fmt.Sprintf("said %d son mejores!", action.Score)
-	case "say_me_voy_al_mazo":
-		what = "said Me Voy Al Mazo!"
+		what = fmt.Sprintf("%v %d son mejores", said, action.Score)
+	case truco.SAY_ME_VOY_AL_MAZO:
+		what = fmt.Sprintf("%v me voy al mazo", said)
 	default:
 		what = "???"
 	}
@@ -379,4 +393,53 @@ func (u *ui) pressAnyNumber() int {
 		return u.pressAnyNumber()
 	}
 	return num
+}
+
+func spanishScore(score int) string {
+	if score == 1 {
+		return "1 mala"
+	}
+	if score < 15 {
+		return fmt.Sprintf("%d malas", score)
+	}
+	if score == 15 {
+		return "entraste"
+	}
+	return fmt.Sprintf("%d buenas", score-14)
+}
+
+func spanishAction(action string, state truco.GameState) string {
+	switch action {
+	case truco.REVEAL_CARD:
+		return "tirar carta"
+	case truco.SAY_ENVIDO:
+		return "envido"
+	case truco.SAY_REAL_ENVIDO:
+		return "real envido"
+	case truco.SAY_FALTA_ENVIDO:
+		return "falta envido"
+	case truco.SAY_ENVIDO_QUIERO:
+		return "quiero"
+	case truco.SAY_ENVIDO_NO_QUIERO:
+		return "no quiero"
+	case truco.SAY_TRUCO:
+		return "truco"
+	case truco.SAY_TRUCO_QUIERO:
+		return "quiero"
+	case truco.SAY_TRUCO_NO_QUIERO:
+		return "no quiero"
+	case truco.SAY_QUIERO_RETRUCO:
+		return "quiero retruco"
+	case truco.SAY_QUIERO_VALE_CUATRO:
+		return "quiero vale cuatro"
+	case truco.SAY_SON_BUENAS:
+		return "son buenas"
+	case truco.SAY_SON_MEJORES:
+		score := state.Hands[state.TurnPlayerID].EnvidoScore()
+		return fmt.Sprintf("%v son mejores", score)
+	case truco.SAY_ME_VOY_AL_MAZO:
+		return "me voy al mazo"
+	default:
+		return "???"
+	}
 }
