@@ -19,8 +19,6 @@ type GameState struct {
 	CardRevealSequence       *CardRevealSequence `json:"cardRevealSequence"`
 	EnvidoFinished           bool                `json:"envidoFinished"`
 	EnvidoWinnerPlayerID     int                 `json:"envidoWinnerPlayerID"`
-	ValidSonBuenas           bool                `json:"validSonBuenas"`
-	ValidSonMejores          bool                `json:"validSonMejores"`
 	RoundFinished            bool                `json:"roundFinished"`
 	IsEnded                  bool                `json:"isEnded"`
 	WinnerPlayerID           int                 `json:"winnerPlayerID"`
@@ -89,8 +87,6 @@ func (g *GameState) StartNewRound() {
 	g.TrucoSequence = &TrucoSequence{}
 	g.CardRevealSequence = &CardRevealSequence{}
 	g.EnvidoFinished = false
-	g.ValidSonBuenas = true
-	g.ValidSonMejores = true
 	g.RoundFinished = false
 	g.TrucoQuieroOwnerPlayerId = -1
 	g.PossibleActions = g.CalculatePossibleActions()

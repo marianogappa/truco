@@ -259,7 +259,7 @@ func getCardsString(cards []truco.Card, withNumbers bool, withBack bool) string 
 		}
 	}
 	if withBack {
-		cs = append(cs, "0 Volver")
+		cs = append(cs, "0. Volver")
 	}
 	return strings.Join(cs, "  ")
 }

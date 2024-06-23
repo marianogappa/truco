@@ -39,12 +39,6 @@ func (a ActionSaySonBuenas) Run(g *GameState) error {
 	if err != nil {
 		return err
 	}
-	curPlayerEnvidoScore := g.Hands[g.CurrentPlayerID()].EnvidoScore()
-	oppPlayerEnvidoScore := g.Hands[g.OpponentPlayerID()].EnvidoScore()
-	g.ValidSonBuenas = true
-	if curPlayerEnvidoScore > oppPlayerEnvidoScore || (curPlayerEnvidoScore == oppPlayerEnvidoScore && g.TurnPlayerID == g.CurrentPlayerID()) {
-		g.ValidSonBuenas = false
-	}
 	g.CurrentRoundResult.EnvidoPoints = cost
 	g.CurrentRoundResult.EnvidoWinnerPlayerID = g.OpponentOf(g.CurrentPlayerID())
 	g.EnvidoWinnerPlayerID = g.OpponentOf(g.CurrentPlayerID())
