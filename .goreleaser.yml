@@ -1,8 +1,8 @@
 # .goreleaser.yml
+version: 2
 project_name: truco
 builds:
   - id: "truco"
-    main: "./main.go"
     binary: "truco"
     goos:
       - windows
