@@ -1,16 +1,16 @@
 .PHONY: test build run release lint
 
 test:
-    go test -v ./...
+	go test -v ./...
 
 build:
-    go build -o truco ./...
+	go build -o truco ./...
 
 run:
-    ./truco
+	./truco
 
 release:
-    goreleaser --snapshot --rm-dist
+	goreleaser --snapshot --rm-dist
 
 lint:
-    golangci-lint run
+	golangci-lint run
