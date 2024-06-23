@@ -6,30 +6,115 @@ import (
 	"fmt"
 )
 
+// GameState represents the state of a Truco game.
+//
+// It is returned by the server on every single call, so if you want to implement a client,
+// you need to be very familiar with this struct.
 type GameState struct {
-	RoundTurnPlayerID int           `json:"roundTurnPlayerID"`
-	RoundNumber       int           `json:"roundNumber"`
-	TurnPlayerID      int           `json:"turnPlayerID"`
-	Hands             map[int]*Hand `json:"hands"`
-	Scores            map[int]int   `json:"scores"`
+	// RoundTurnPlayerID is the player ID of the player who starts the round, or "mano".
+	RoundTurnPlayerID int `json:"roundTurnPlayerID"`
 
-	PossibleActions          []string            `json:"possibleActionTypes"`
-	EnvidoSequence           *EnvidoSequence     `json:"envidoSequence"`
-	TrucoSequence            *TrucoSequence      `json:"trucoSequence"`
-	CardRevealSequence       *CardRevealSequence `json:"cardRevealSequence"`
-	EnvidoFinished           bool                `json:"envidoFinished"`
-	EnvidoWinnerPlayerID     int                 `json:"envidoWinnerPlayerID"`
-	RoundFinished            bool                `json:"roundFinished"`
-	IsEnded                  bool                `json:"isEnded"`
-	WinnerPlayerID           int                 `json:"winnerPlayerID"`
-	CurrentRoundResult       RoundResult         `json:"currentRoundResult"`
-	RoundJustStarted         bool                `json:"roundJustStarted"`
-	TrucoQuieroOwnerPlayerId int                 `json:"trucoQuieroOwnerPlayerId"`
+	// RoundNumber is the number of the current round, starting from 1.
+	RoundNumber int `json:"roundNumber"`
 
-	Actions              []json.RawMessage `json:"actions"`
-	HandsDealt           []map[int]*Hand   `json:"handsDealt"`
-	RoundResults         []RoundResult     `json:"roundResults"`
-	ActionOwnerPlayerIDs []int             `json:"actionOwnerPlayerIDs"`
+	// TurnPlayerID is the player ID of the player whose turn it is to play an action.
+	// This is different from RoundTurnPlayerID, which is the player who starts the round.
+	// They are the same at the beginning of the round.
+	TurnPlayerID int `json:"turnPlayerID"`
+
+	// Hands is a map of player IDs to their respective hands.
+	Hands map[int]*Hand `json:"hands"`
+
+	// Scores is a map of player IDs to their respective scores.
+	// Scores go from 0 to 30.
+	Scores map[int]int `json:"scores"`
+
+	// PossibleActions is a list of possible actions that the current player can take.
+	// Possible actions are calculated based on game state at the beginnin of the round and after
+	// each action is run (i.e. GameState.RunAction).
+	// The actions are strings, which are the names of the actions. In the case of REVEAL_CARD,
+	// the card is not specified.
+	PossibleActions []string `json:"possibleActionTypes"`
+
+	// EnvidoSequence is the sequence of envido actions that have been taken in the current round.
+	// Example sequence is: [SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO]
+	// The player who started the sequence is saved too, so that certain "YieldsTurn" methods can work.
+	EnvidoSequence *EnvidoSequence `json:"envidoSequence"`
+
+	// TrucoSequence is the sequence of truco actions that have been taken in the current round.
+	// Example sequence is: [SAY_TRUCO, SAY_TRUCO_QUIERO, SAY_QUIERO_RETRUCO, SAY_TRUCO_NO_QUIERO]
+	TrucoSequence *TrucoSequence `json:"trucoSequence"`
+
+	// CardRevealSequence is the sequence of card reveal actions that have been taken in the current round.
+	// Each step is each card that was revealed (by both players).
+	// `BistepWinners` (TODO: bad name) stores the result of the faceoff between each pair of cards.
+	// A faceoff result will have the playerID of the winner, or -1 if it was a tie.
+	CardRevealSequence *CardRevealSequence `json:"cardRevealSequence"`
+
+	// EnvidoFinished is true if the envido sequence is finished, or can no longer be continued.
+	// TODO: can we remove this? Looks redundant to other state. But need tests first.
+	EnvidoFinished bool `json:"envidoFinished"`
+
+	// EnvidoWinnerPlayerID is the player ID of the player who won the envido sequence.
+	// TODO: looks like this is assigned to but never used. Can we remove?
+	EnvidoWinnerPlayerID int `json:"envidoWinnerPlayerID"`
+
+	// RoundFinished is true if the current round is finished. Each action's `Run()` method is responsible
+	// for setting this. During `GameState.RunAction()`, If the action's `Run()` method sets this to true,
+	// then `GameState.startNewRound()` will be called.
+	//
+	// Clients are not really notified of a round change, so they should keep track of the "last round
+	// number" to see if it changes.
+	RoundFinished bool `json:"roundFinished"`
+
+	// IsEnded is true if the whole game is ended, rather than an individual round. This happens when
+	// a player reaches 30 points.
+	IsEnded bool `json:"isEnded"`
+
+	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsEnded` is
+	// `true`. Otherwise, it's -1.
+	WinnerPlayerID int `json:"winnerPlayerID"`
+
+	// CurrentRoundResult contains the live results of the ongoing round for envido/truco winners & points.
+	// It is set when actions are run, and is reset at the beginning of each round. Be careful when using
+	// this in the client, because if the last action caused the round to finish, it will be reset before
+	// you can use it to summarise what happened. You should use `RoundResults` in this case.
+	CurrentRoundResult RoundResult `json:"currentRoundResult"`
+
+	// RoundJustStarted is true if a round has just started (i.e. no actions have been run on this round).
+	// This isn't used at all by the engine. It's strictly for clients to know, since there's no way to
+	// relate actions to rounds. TODO: that's probably a problem?
+	RoundJustStarted bool `json:"roundJustStarted"`
+
+	// TrucoQuieroOwnerPlayerId is the player ID of the player who said "quiero" last in the truco
+	// sequence. This is used to determine who can raise the stakes in the truco sequence.
+	//
+	// TODO: this should probably be inside TrucoSequence?
+	TrucoQuieroOwnerPlayerId int `json:"trucoQuieroOwnerPlayerId"`
+
+	// Actions is the list of actions that have been run in the game.
+	// Each element is a JSON-serialized action. This is because `Action` is an interface, and we can't
+	// serialize it directly otherwise. Clients should use `DeserializeAction` to get the actual action.
+	//
+	// TODO: rather than having "Actions", "HandsDealt", "RoundResults", "ActionOwnerPlayerIDs" as
+	// separate fields, we should have a single "ActionLog" field that contains all of these.
+	Actions []json.RawMessage `json:"actions"`
+
+	// HandsDealt is the list of hands that were dealt in the game. Each element is a map of player IDs to
+	// their respective hands.
+	HandsDealt []map[int]*Hand `json:"handsDealt"`
+
+	// RoundResults is the list of results of each round. Each element is a `RoundResult` struct.
+	// This is useful for clients to see the results of each round, since `CurrentRoundResult` is reset
+	// at the beginning of each round.
+	RoundResults []RoundResult `json:"roundResults"`
+
+	// ActionOwnerPlayerIDs is the list of player IDs who ran each action. There is no PlayerID field in
+	// the `Action` struct, mostly because it would be annoying to have to distrust the client who sends
+	// it.
+	//
+	// Note: this definitely should be inside an "ActionLog" slice, instead of here.
+	ActionOwnerPlayerIDs []int `json:"actionOwnerPlayerIDs"`
 }
 
 func New() *GameState {
@@ -44,19 +129,18 @@ func New() *GameState {
 		Actions:           []json.RawMessage{},
 	}
 
-	gs.StartNewRound()
+	gs.startNewRound()
 
 	return gs
 }
 
-func (g *GameState) StartNewRound() {
-	deck := NewDeck()
+func (g *GameState) startNewRound() {
+	deck := newDeck()
 	g.CurrentRoundResult = RoundResult{
 		EnvidoWinnerPlayerID: -1,
 		EnvidoPoints:         0,
 		TrucoWinnerPlayerID:  -1,
 		TrucoPoints:          0,
-		LastAction:           nil,
 	}
 
 	g.RoundJustStarted = true
@@ -64,23 +148,15 @@ func (g *GameState) StartNewRound() {
 	g.RoundNumber++
 	g.TurnPlayerID = g.RoundTurnPlayerID
 
-	// By default, deal new hands, but if GameState has hands saved, use those
-	// TODO: this changes if players are not 0 & 1 (or more than 2 players)
-	handPlayer0 := deck.DealHand()
-	handPlayer1 := deck.DealHand()
-	if len(g.HandsDealt) >= g.RoundNumber {
-		handPlayer0 = g.HandsDealt[g.RoundNumber-1][0]
-		handPlayer1 = g.HandsDealt[g.RoundNumber-1][1]
-	} else {
-		g.HandsDealt = append(g.HandsDealt, map[int]*Hand{
-			0: handPlayer0,
-			1: handPlayer1,
-		})
-	}
-
+	handPlayer0 := deck.dealHand()
+	handPlayer1 := deck.dealHand()
+	g.HandsDealt = append(g.HandsDealt, map[int]*Hand{
+		g.RoundTurnPlayerID:               handPlayer0,
+		g.OpponentOf(g.RoundTurnPlayerID): handPlayer1,
+	})
 	g.Hands = map[int]*Hand{
-		0: handPlayer0,
-		1: handPlayer1,
+		g.RoundTurnPlayerID:               handPlayer0,
+		g.OpponentOf(g.RoundTurnPlayerID): handPlayer1,
 	}
 	g.EnvidoWinnerPlayerID = -1
 	g.EnvidoSequence = &EnvidoSequence{StartingPlayerID: -1}
@@ -111,10 +187,8 @@ func (g *GameState) RunAction(action Action) error {
 
 	// Start new round if current round is finished
 	if !g.IsEnded && g.RoundFinished {
-		g.HandleInvalidEnvidoDeclarations()
-		// TODO: here we need to handle the case where players lie about envido score
 		g.RoundResults = append(g.RoundResults, g.CurrentRoundResult)
-		g.StartNewRound()
+		g.startNewRound()
 		return nil
 	}
 
@@ -137,10 +211,6 @@ func (g *GameState) RunAction(action Action) error {
 	}
 
 	return nil
-}
-
-func (g *GameState) HandleInvalidEnvidoDeclarations() {
-	// TODO this is really tricky actually
 }
 
 func (g GameState) CurrentPlayerID() int {
@@ -199,7 +269,6 @@ type Action interface {
 }
 
 var (
-	// errUnknownActionType = errors.New("unknown action type")
 	errActionNotPossible = errors.New("action not possible")
 	errEnvidoFinished    = errors.New("envido finished")
 	errGameIsEnded       = errors.New("game is ended")
@@ -289,9 +358,8 @@ func DeserializeAction(bs []byte) (Action, error) {
 }
 
 type RoundResult struct {
-	EnvidoWinnerPlayerID int             `json:"envidoWinnerPlayerID"`
-	EnvidoPoints         int             `json:"envidoPoints"`
-	TrucoWinnerPlayerID  int             `json:"trucoWinnerPlayerID"`
-	TrucoPoints          int             `json:"trucoPoints"`
-	LastAction           json.RawMessage `json:"lastAction"`
+	EnvidoWinnerPlayerID int `json:"envidoWinnerPlayerID"`
+	EnvidoPoints         int `json:"envidoPoints"`
+	TrucoWinnerPlayerID  int `json:"trucoWinnerPlayerID"`
+	TrucoPoints          int `json:"trucoPoints"`
 }

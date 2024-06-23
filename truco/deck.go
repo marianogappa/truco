@@ -13,19 +13,25 @@ const (
 	BASTO  = "basto"
 )
 
+// Card represents a Spanish deck card.
 type Card struct {
-	Suit   string `json:"suit"`
-	Number int    `json:"number"`
+	// Suit is the card's suit, which can be "oro", "copa", "espada" or "basto".
+	Suit string `json:"suit"`
+
+	// Number is the card's number, from 1 to 12.
+	Number int `json:"number"`
 }
 
 func (c Card) String() string {
 	return fmt.Sprintf("%d de %s", c.Number, c.Suit)
 }
 
-type Deck struct {
+type deck struct {
 	cards []Card
 }
 
+// Hand represents a player's hand. Cards can be revealed or unrevealed.
+// When a round starts, 3 cards are dealt to each player, and they are all unrevealed.
 type Hand struct {
 	Unrevealed []Card `json:"unrevealed"`
 	Revealed   []Card `json:"revealed"`
@@ -80,12 +86,12 @@ func makeSpanishCards() []Card {
 	return cards
 }
 
-func NewDeck() *Deck {
-	d := Deck{cards: makeSpanishCards()}
+func newDeck() *deck {
+	d := deck{cards: makeSpanishCards()}
 	return &d
 }
 
-func (d *Deck) DealHand() *Hand {
+func (d *deck) dealHand() *Hand {
 	hand := &Hand{}
 	for i := 0; i < 3; i++ {
 		hand.Unrevealed = append(hand.Unrevealed, d.cards[i])

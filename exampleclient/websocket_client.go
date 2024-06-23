@@ -19,7 +19,6 @@ func Player(playerID int, address string) {
 	}
 	defer termbox.Close()
 
-	// Connect to the WebSocket server
 	conn, _, err := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://%v/ws", address), nil)
 	if err != nil {
 		log.Println("Failed to connect to WebSocket server:", err)
