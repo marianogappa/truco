@@ -10,7 +10,7 @@ run:
 	./truco
 
 release:
-	goreleaser
+	rm -rf dist && goreleaser
 
 lint:
 	golangci-lint run
