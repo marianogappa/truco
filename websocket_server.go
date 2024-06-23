@@ -74,7 +74,8 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		log.Println("Waiting for action/state_request from player", *playerID)
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Failed to read message from client:", err)
+			log.Println("Failed to read message from client, freeing slot:", err)
+			s.players[*playerID] = nil
 			break
 		}
 

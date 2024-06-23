@@ -23,10 +23,28 @@ func (a ActionSayEnvidoQuiero) IsPossible(g GameState) bool {
 }
 
 func (a ActionSayTrucoQuiero) IsPossible(g GameState) bool {
+	// Edge case: Truco -> Envido -> ???
+	// In this case, until envido is resolved, truco cannot continue
+	actionEnvidoQuiero := ActionSayEnvidoQuiero{act: act{Name: SAY_ENVIDO_QUIERO}}
+	actionSonBuenas := ActionSaySonBuenas{act: act{Name: SAY_SON_BUENAS}}
+	actionSonMejores := ActionSaySonMejores{act: act{Name: SAY_SON_MEJORES}}
+	if actionEnvidoQuiero.IsPossible(g) || actionSonBuenas.IsPossible(g) || actionSonMejores.IsPossible(g) {
+		return false
+	}
+
 	return g.TrucoSequence.CanAddStep(a.GetName())
 }
 
 func (a ActionSayTrucoNoQuiero) IsPossible(g GameState) bool {
+	// Edge case: Truco -> Envido -> ???
+	// In this case, until envido is resolved, truco cannot continue
+	actionEnvidoQuiero := ActionSayEnvidoQuiero{act: act{Name: SAY_ENVIDO_QUIERO}}
+	actionSonBuenas := ActionSaySonBuenas{act: act{Name: SAY_SON_BUENAS}}
+	actionSonMejores := ActionSaySonMejores{act: act{Name: SAY_SON_MEJORES}}
+	if actionEnvidoQuiero.IsPossible(g) || actionSonBuenas.IsPossible(g) || actionSonMejores.IsPossible(g) {
+		return false
+	}
+
 	return g.TrucoSequence.CanAddStep(a.GetName())
 }
 
