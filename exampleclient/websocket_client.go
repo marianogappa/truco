@@ -1,15 +1,16 @@
-package main
+package exampleclient
 
 import (
 	"fmt"
 	"log"
 
 	"github.com/gorilla/websocket"
+	"github.com/marianogappa/truco/server"
 	"github.com/marianogappa/truco/truco"
 	"github.com/nsf/termbox-go"
 )
 
-func player(playerID int, address string) {
+func Player(playerID int, address string) {
 	ui := NewUI()
 
 	err := termbox.Init()
@@ -26,14 +27,14 @@ func player(playerID int, address string) {
 	}
 	defer conn.Close()
 
-	if err := wsSend(conn, NewMessageHello(playerID)); err != nil {
+	if err := server.WsSend(conn, server.NewMessageHello(playerID)); err != nil {
 		log.Println(err)
 		return
 	}
 
 	lastRound := 0
 	for {
-		gameState, err := wsReadMessage[truco.GameState, MessageHeresGameState](conn, MessageTypeHeresGameState)
+		gameState, err := server.WsReadMessage[truco.GameState, server.MessageHeresGameState](conn, server.MessageTypeHeresGameState)
 		if err != nil {
 			log.Println(err)
 			return
@@ -68,8 +69,8 @@ func player(playerID int, address string) {
 			break
 		}
 
-		msg, _ := NewMessageAction(action)
-		if err := wsSend(conn, msg); err != nil {
+		msg, _ := server.NewMessageAction(action)
+		if err := server.WsSend(conn, msg); err != nil {
 			log.Println(err)
 			return
 		}

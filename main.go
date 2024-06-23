@@ -4,15 +4,17 @@ import (
 	"fmt"
 
 	"os"
-)
 
-// TODO: there's a bug that exists in most Truco games: it should be possible to throw a card and say truco at the same time
+	"github.com/marianogappa/truco/exampleclient"
+	"github.com/marianogappa/truco/server"
+)
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("usage: truco server|player1|player2 [address]")
-		fmt.Println("Define the PORT environment variable to change the default port (8080).")
-		return
+		fmt.Println("usage: truco server")
+		fmt.Println("usage: truco player1|player2 [address]")
+		fmt.Println("Define the PORT environment variable for truco server to change the default port (8080).")
+		os.Exit(0)
 	}
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -27,11 +29,11 @@ func main() {
 	arg := os.Args[1]
 	switch arg {
 	case "server":
-		serve(port)
+		server.New(port).Start()
 	case "player1":
-		player(0, address)
+		exampleclient.Player(0, address)
 	case "player2":
-		player(1, address)
+		exampleclient.Player(1, address)
 	default:
 		fmt.Println("Invalid argument. Please provide either server or client.")
 	}

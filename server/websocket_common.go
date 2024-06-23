@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func wsSend(conn *websocket.Conn, message any) error {
+func WsSend(conn *websocket.Conn, message any) error {
 	bs, err := json.Marshal(message)
 	if err != nil {
 		log.Printf("Failed to marshal message: %v", err)
@@ -19,7 +19,7 @@ func wsSend(conn *websocket.Conn, message any) error {
 	return err
 }
 
-func wsReadMessage[U any, T IWebsocketMessage[U]](conn *websocket.Conn, expectedType int) (*U, error) {
+func WsReadMessage[U any, T IWebsocketMessage[U]](conn *websocket.Conn, expectedType int) (*U, error) {
 	messageType, message, err := conn.ReadMessage()
 	if messageType != websocket.TextMessage {
 		return nil, fmt.Errorf("Expected text message, got %d", messageType)
@@ -27,10 +27,10 @@ func wsReadMessage[U any, T IWebsocketMessage[U]](conn *websocket.Conn, expected
 	if err != nil {
 		return nil, fmt.Errorf("Failed to read message from client: %v", err)
 	}
-	return wsDeserializeMessage[U, T](message, expectedType)
+	return WsDeserializeMessage[U, T](message, expectedType)
 }
 
-func wsDeserializeMessage[U any, T IWebsocketMessage[U]](message []byte, expectedType int) (*U, error) {
+func WsDeserializeMessage[U any, T IWebsocketMessage[U]](message []byte, expectedType int) (*U, error) {
 	var m T
 	if err := json.Unmarshal(message, &m); err != nil {
 		return nil, fmt.Errorf("Failed to unmarshal message: %v", err)

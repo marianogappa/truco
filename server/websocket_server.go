@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"encoding/json"
@@ -10,15 +10,10 @@ import (
 	"github.com/marianogappa/truco/truco"
 )
 
-// Define WebSocket upgrader
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
-}
-
-func serve(port string) {
-	NewServer(port).Start()
 }
 
 // TODO: resources shouldn't be shared between goroutines! It's not panicking due to insufficient testing for now.
@@ -28,7 +23,7 @@ type server struct {
 	players   []*websocket.Conn
 }
 
-func NewServer(port string) *server {
+func New(port string) *server {
 	return &server{gameState: truco.New(), port: port, players: []*websocket.Conn{nil, nil}}
 }
 
@@ -48,7 +43,7 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	playerID, err := wsReadMessage[int, MessageHello](conn, MessageTypeHello)
+	playerID, err := WsReadMessage[int, MessageHello](conn, MessageTypeHello)
 	if err != nil {
 		log.Println(err)
 		return
@@ -65,7 +60,7 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	s.players[*playerID] = conn
 
 	msg, _ := NewMessageHeresGameState(*s.gameState)
-	if err := wsSend(conn, msg); err != nil {
+	if err := WsSend(conn, msg); err != nil {
 		log.Println(err)
 		return
 	}
@@ -89,7 +84,7 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		switch wsMessage.Type {
 		case MessageTypeAction:
 			log.Println("Got action message:", string(message))
-			action, err := wsDeserializeMessage[truco.Action, MessageAction](message, MessageTypeAction)
+			action, err := WsDeserializeMessage[truco.Action, MessageAction](message, MessageTypeAction)
 			if err != nil {
 				log.Println(err)
 				return
@@ -106,7 +101,7 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			msg, _ := NewMessageHeresGameState(*s.gameState)
 			for i, playerConn := range s.players {
 				log.Println("Sending game state to player", i)
-				if err := wsSend(playerConn, msg); err != nil {
+				if err := WsSend(playerConn, msg); err != nil {
 					log.Println(err)
 					return
 				}
@@ -115,7 +110,7 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			log.Println("Got state request message:", string(message))
 
 			msg, _ := NewMessageHeresGameState(*s.gameState)
-			if err := wsSend(conn, msg); err != nil {
+			if err := WsSend(conn, msg); err != nil {
 				log.Println(err)
 				return
 			}
