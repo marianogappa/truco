@@ -21,14 +21,6 @@ jobs:
         with:
           go-version: '1.22.3'
 
-      - name: Install GoReleaser
-        run: |
-          curl -sSfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh
-
-          - name: Install GitVersion
-          uses: gittools/actions/gitversion/setup@v0.9.7
-          with:
-            versionSpec: '5.x'
       - name: Determine Version
         uses: gittools/actions/gitversion/execute@v0.9.7
       - name: Display SemVer
@@ -40,6 +32,10 @@ jobs:
       - name: Push git tag
         run: git push origin $GITVERSION_SEMVER
       - name: Run GoReleaser
-        run: goreleaser release --rm-dist
+        uses: goreleaser/goreleaser-action@v6
+        with:
+            # either 'goreleaser' (default) or 'goreleaser-pro'
+            distribution: goreleaser
+            version: "latest"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
