@@ -94,3 +94,10 @@ func (a ActionSayTrucoNoQuiero) Run(g *GameState) error {
 	g.Scores[g.OpponentPlayerID()] += cost
 	return nil
 }
+
+func (a ActionSayTrucoQuiero) YieldsTurn(g GameState) bool {
+	// Next turn belongs to the player who started the truco
+	// "sub-sequence". Thus, yield turn if the current player
+	// is not the one who started the sub-sequence.
+	return g.TurnPlayerID != g.TrucoSequence.StartingPlayerID
+}

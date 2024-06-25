@@ -39,7 +39,17 @@ var (
 )
 
 type TrucoSequence struct {
-	Sequence []string `json:"sequence"`
+	// StartingPlayerID is the player ID that started the truco sub-sequence.
+	//
+	// It is used to determine "YieldsTurn" after a "quiero" action.
+	//
+	// Note the word "sub-sequence". There can be 0 to 3 truco sub-sequences in a round.
+	//
+	// Sub-sequences are separated by "quiero" actions.
+	//
+	// StartingPlayerID holds the player ID that started the _current_ sub-sequence.
+	StartingPlayerID int      `json:"starting_player_id"`
+	Sequence         []string `json:"sequence"`
 }
 
 func (ts TrucoSequence) String() string {
@@ -86,6 +96,22 @@ func (ts TrucoSequence) Cost() (int, error) {
 		return COST_NOT_READY, errUnfinishedTrucoSequence
 	}
 	return validTrucoSequenceCosts[ts.String()], nil
+}
+
+func (ts TrucoSequence) IsSubsequenceStart() bool {
+	// Subsequences are delimited by "quiero" actions.
+	// It's necessary to store the playerID that started the current sub-sequence,
+	// so that we can determine "YieldsTurn" after a "quiero" action.
+	if len(ts.Sequence) == 0 {
+		return false
+	}
+	if len(ts.Sequence) == 1 {
+		return true
+	}
+	if ts.Sequence[len(ts.Sequence)-2] == SAY_TRUCO_QUIERO {
+		return true
+	}
+	return false
 }
 
 var (

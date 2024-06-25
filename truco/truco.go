@@ -115,9 +115,11 @@ type GameState struct {
 	//
 	// Note: this definitely should be inside an "ActionLog" slice, instead of here.
 	ActionOwnerPlayerIDs []int `json:"actionOwnerPlayerIDs"`
+
+	deck *deck `json:"-"`
 }
 
-func New() *GameState {
+func New(opts ...func(*GameState)) *GameState {
 	// TODO: support taking player ids, ser/de, ...
 	gs := &GameState{
 		RoundTurnPlayerID: 1,
@@ -127,6 +129,11 @@ func New() *GameState {
 		IsEnded:           false,
 		WinnerPlayerID:    -1,
 		Actions:           []json.RawMessage{},
+		deck:              newDeck(),
+	}
+
+	for _, opt := range opts {
+		opt(gs)
 	}
 
 	gs.startNewRound()
@@ -135,7 +142,6 @@ func New() *GameState {
 }
 
 func (g *GameState) startNewRound() {
-	deck := newDeck()
 	g.CurrentRoundResult = RoundResult{
 		EnvidoWinnerPlayerID: -1,
 		EnvidoPoints:         0,
@@ -148,8 +154,8 @@ func (g *GameState) startNewRound() {
 	g.RoundNumber++
 	g.TurnPlayerID = g.RoundTurnPlayerID
 
-	handPlayer0 := deck.dealHand()
-	handPlayer1 := deck.dealHand()
+	handPlayer0 := g.deck.dealHand()
+	handPlayer1 := g.deck.dealHand()
 	g.HandsDealt = append(g.HandsDealt, map[int]*Hand{
 		g.RoundTurnPlayerID:               handPlayer0,
 		g.OpponentOf(g.RoundTurnPlayerID): handPlayer1,

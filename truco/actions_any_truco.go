@@ -44,5 +44,14 @@ func (g *GameState) AnyTrucoActionRunAction(at Action) error {
 	if !ok {
 		return errActionNotPossible
 	}
+
+	// Possible actions are "truco", "quiero retruco" and "quiero vale cuatro", not "quiero"/"no quiero".
+	// If this is the first action in a sub-sequence (subsequences are delimited by "quiero" actions),
+	// Store the player ID that started the sub-sequence, so that turn can be yielded correctly after
+	// a "quiero" action.
+	if g.TrucoSequence.IsSubsequenceStart() {
+		g.TrucoSequence.StartingPlayerID = g.TurnPlayerID
+	}
+
 	return nil
 }

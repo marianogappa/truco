@@ -27,7 +27,8 @@ func (c Card) String() string {
 }
 
 type deck struct {
-	cards []Card
+	cards        []Card
+	dealHandFunc func() *Hand
 }
 
 // Hand represents a player's hand. Cards can be revealed or unrevealed.
@@ -35,6 +36,23 @@ type deck struct {
 type Hand struct {
 	Unrevealed []Card `json:"unrevealed"`
 	Revealed   []Card `json:"revealed"`
+}
+
+func (h Hand) DeepCopy() Hand {
+	cpyUnrevealed := []Card{}
+	cpyRevealed := []Card{}
+	for _, c := range h.Unrevealed {
+		newC := c
+		cpyUnrevealed = append(cpyUnrevealed, newC)
+	}
+	for _, c := range h.Revealed {
+		newC := c
+		cpyRevealed = append(cpyRevealed, newC)
+	}
+	return Hand{
+		Unrevealed: cpyUnrevealed,
+		Revealed:   cpyRevealed,
+	}
 }
 
 func (h Hand) HasUnrevealedCard(c Card) bool {
@@ -88,10 +106,15 @@ func makeSpanishCards() []Card {
 
 func newDeck() *deck {
 	d := deck{cards: makeSpanishCards()}
+	d.dealHandFunc = d.defaultDealHand
 	return &d
 }
 
 func (d *deck) dealHand() *Hand {
+	return d.dealHandFunc()
+}
+
+func (d *deck) defaultDealHand() *Hand {
 	hand := &Hand{}
 	for i := 0; i < 3; i++ {
 		hand.Unrevealed = append(hand.Unrevealed, d.cards[i])

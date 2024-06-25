@@ -23,11 +23,19 @@ func NewUI() *ui {
 		sendKeyPressCh: make(chan rune),
 	}
 	ui.startKeyEventLoop()
+	err := termbox.Init()
+	if err != nil {
+		panic(err)
+	}
 	return ui
 }
 
+func (u *ui) Close() {
+	termbox.Close()
+}
+
 func (u *ui) play(playerID int, gameState truco.GameState) (truco.Action, error) {
-	err := u.printState(playerID, gameState, PRINT_MODE_NORMAL)
+	err := u.render(playerID, gameState, PRINT_MODE_NORMAL)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +60,7 @@ func (u *ui) play(playerID int, gameState truco.GameState) (truco.Action, error)
 			input = fmt.Sprintf(`{"name":"%v","score":%d}`, actionName, gameState.Hands[gameState.TurnPlayerID].EnvidoScore())
 		}
 		if actionName == "reveal_card" {
-			err := u.printState(playerID, gameState, PRINT_MODE_WHICH_CARD_REVEAL)
+			err := u.render(playerID, gameState, PRINT_MODE_WHICH_CARD_REVEAL)
 			if err != nil {
 				return nil, err
 			}
@@ -100,7 +108,7 @@ const (
 	PRINT_MODE_END
 )
 
-func (u *ui) printState(playerID int, state truco.GameState, mode printMode) error {
+func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
 	err := termbox.Clear(termbox.ColorWhite, termbox.ColorBlack)
 	if err != nil {
 		return err
