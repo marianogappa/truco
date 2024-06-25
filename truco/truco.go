@@ -34,7 +34,7 @@ type GameState struct {
 	// each action is run (i.e. GameState.RunAction).
 	// The actions are strings, which are the names of the actions. In the case of REVEAL_CARD,
 	// the card is not specified.
-	PossibleActions []string `json:"possibleActionTypes"`
+	PossibleActions []json.RawMessage `json:"possibleActions"`
 
 	// EnvidoSequence is the sequence of envido actions that have been taken in the current round.
 	// Example sequence is: [SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO]
@@ -171,7 +171,7 @@ func (g *GameState) startNewRound() {
 	g.EnvidoFinished = false
 	g.RoundFinished = false
 	g.TrucoQuieroOwnerPlayerId = -1
-	g.PossibleActions = g.CalculatePossibleActions()
+	g.PossibleActions = _serializeActions(g.CalculatePossibleActions())
 }
 
 func (g *GameState) RunAction(action Action) error {
@@ -215,7 +215,7 @@ func (g *GameState) RunAction(action Action) error {
 		}
 	}
 
-	g.PossibleActions = g.CalculatePossibleActions()
+	g.PossibleActions = _serializeActions(g.CalculatePossibleActions())
 	return nil
 }
 
@@ -280,30 +280,38 @@ var (
 	errGameIsEnded       = errors.New("game is ended")
 )
 
-func (g GameState) CalculatePossibleActions() []string {
-	allActions := []Action{
-		ActionRevealCard{act: act{Name: "reveal_card"}},
-		ActionSayEnvido{act: act{Name: "say_envido"}},
-		ActionSayRealEnvido{act: act{Name: "say_real_envido"}},
-		ActionSayFaltaEnvido{act: act{Name: "say_falta_envido"}},
-		ActionSayEnvidoQuiero{act: act{Name: "say_envido_quiero"}},
-		ActionSayEnvidoNoQuiero{act: act{Name: "say_envido_no_quiero"}},
-		ActionSayTruco{act: act{Name: "say_truco"}},
-		ActionSayTrucoQuiero{act: act{Name: "say_truco_quiero"}},
-		ActionSayTrucoNoQuiero{act: act{Name: "say_truco_no_quiero"}},
-		ActionSayQuieroRetruco{act: act{Name: "say_quiero_retruco"}},
-		ActionSayQuieroValeCuatro{act: act{Name: "say_quiero_vale_cuatro"}},
-		ActionSaySonBuenas{act: act{Name: "say_son_buenas"}},
-		ActionSaySonMejores{act: act{Name: "say_son_mejores"}},
-		ActionSayMeVoyAlMazo{act: act{Name: "say_me_voy_al_mazo"}},
+func (g GameState) CalculatePossibleActions() []Action {
+	envidoScore := g.Hands[g.TurnPlayerID].EnvidoScore()
+
+	allActions := []Action{}
+
+	for _, card := range g.Hands[g.TurnPlayerID].Unrevealed {
+		allActions = append(allActions, newActionRevealCard(card))
 	}
-	actions := []string{}
+
+	allActions = append(allActions,
+		newActionSayEnvido(),
+		newActionSayRealEnvido(),
+		newActionSayFaltaEnvido(),
+		newActionSayEnvidoQuiero(envidoScore),
+		newActionSayEnvidoNoQuiero(),
+		newActionSayTruco(),
+		newActionSayTrucoQuiero(),
+		newActionSayTrucoNoQuiero(),
+		newActionSayQuieroRetruco(),
+		newActionSayQuieroValeCuatro(),
+		newActionSaySonBuenas(),
+		newActionSaySonMejores(envidoScore),
+		newActionSayMeVoyAlMazo(),
+	)
+
+	possibleActions := []Action{}
 	for _, action := range allActions {
 		if action.IsPossible(g) {
-			actions = append(actions, action.GetName())
+			possibleActions = append(possibleActions, action)
 		}
 	}
-	return actions
+	return possibleActions
 }
 
 func SerializeAction(action Action) []byte {
@@ -368,4 +376,12 @@ type RoundResult struct {
 	EnvidoPoints         int `json:"envidoPoints"`
 	TrucoWinnerPlayerID  int `json:"trucoWinnerPlayerID"`
 	TrucoPoints          int `json:"trucoPoints"`
+}
+
+func _serializeActions(as []Action) []json.RawMessage {
+	_as := []json.RawMessage{}
+	for _, a := range as {
+		_as = append(_as, json.RawMessage(SerializeAction(a)))
+	}
+	return _as
 }

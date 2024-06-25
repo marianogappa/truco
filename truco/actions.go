@@ -9,14 +9,19 @@ func (a act) GetName() string {
 }
 
 func (a act) YieldsTurn(g GameState) bool {
-	// if a.Name == SAY_ENVIDO_NO_QUIERO {
-	// 	log.Printf("Player %d started the envido sequence, player %v just said no quiero, yields should return: %v but I'm returning true\n", g.EnvidoSequence.StartingPlayerID, g.TurnPlayerID, g.TurnPlayerID != g.EnvidoSequence.StartingPlayerID)
-	// }
 	return true
 }
 
 func newActionSayEnvido() Action {
 	return ActionSayEnvido{act: act{Name: SAY_ENVIDO}}
+}
+
+func newActionSayRealEnvido() Action {
+	return ActionSayRealEnvido{act: act{Name: SAY_REAL_ENVIDO}}
+}
+
+func newActionSayFaltaEnvido() Action {
+	return ActionSayFaltaEnvido{act: act{Name: SAY_FALTA_ENVIDO}}
 }
 
 func newActionSayEnvidoNoQuiero() Action {
@@ -57,4 +62,8 @@ func newActionSaySonMejores(score int) Action {
 
 func newActionRevealCard(card Card) Action {
 	return ActionRevealCard{act: act{Name: REVEAL_CARD}, Card: card}
+}
+
+func newActionSayMeVoyAlMazo() Action {
+	return ActionSayMeVoyAlMazo{act: act{Name: SAY_ME_VOY_AL_MAZO}}
 }
