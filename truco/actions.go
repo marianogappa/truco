@@ -9,6 +9,9 @@ func (a act) GetName() string {
 }
 
 func (a act) YieldsTurn(g GameState) bool {
+	// if a.Name == SAY_ENVIDO_NO_QUIERO {
+	// 	log.Printf("Player %d started the envido sequence, player %v just said no quiero, yields should return: %v but I'm returning true\n", g.EnvidoSequence.StartingPlayerID, g.TurnPlayerID, g.TurnPlayerID != g.EnvidoSequence.StartingPlayerID)
+	// }
 	return true
 }
 

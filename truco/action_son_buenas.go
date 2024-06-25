@@ -48,6 +48,6 @@ func (a ActionSaySonBuenas) Run(g *GameState) error {
 }
 
 func (a ActionSaySonBuenas) YieldsTurn(g GameState) bool {
-	// In son_buenas/son_mejores, the turn should go to whoever started the sequence
+	// In son_buenas/son_mejores/no_quiero, the turn should go to whoever started the sequence
 	return g.TurnPlayerID != g.EnvidoSequence.StartingPlayerID
 }

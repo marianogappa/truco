@@ -202,7 +202,6 @@ func (g *GameState) RunAction(action Action) error {
 	if !g.IsEnded && !g.RoundFinished && action.YieldsTurn(*g) {
 		g.TurnPlayerID = g.OpponentOf(g.TurnPlayerID)
 	}
-	g.PossibleActions = g.CalculatePossibleActions()
 
 	// Handle end of game due to score
 	// TODO: this changes if players are not 0 & 1 (or more than 2 players)
@@ -216,6 +215,7 @@ func (g *GameState) RunAction(action Action) error {
 		}
 	}
 
+	g.PossibleActions = g.CalculatePossibleActions()
 	return nil
 }
 

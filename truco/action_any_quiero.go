@@ -101,3 +101,8 @@ func (a ActionSayTrucoQuiero) YieldsTurn(g GameState) bool {
 	// is not the one who started the sub-sequence.
 	return g.TurnPlayerID != g.TrucoSequence.StartingPlayerID
 }
+
+func (a ActionSayEnvidoNoQuiero) YieldsTurn(g GameState) bool {
+	// In son_buenas/son_mejores/no_quiero, the turn should go to whoever started the sequence
+	return g.TurnPlayerID != g.EnvidoSequence.StartingPlayerID
+}
