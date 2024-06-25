@@ -35,8 +35,7 @@ func (u *ui) Close() {
 }
 
 func (u *ui) play(playerID int, gameState truco.GameState) (truco.Action, error) {
-	err := u.render(playerID, gameState, PRINT_MODE_NORMAL)
-	if err != nil {
+	if err := u.render(playerID, gameState, PRINT_MODE_NORMAL); err != nil {
 		return nil, err
 	}
 
@@ -45,65 +44,24 @@ func (u *ui) play(playerID int, gameState truco.GameState) (truco.Action, error)
 	}
 
 	var (
-		action truco.Action
-		input  string
+		action          truco.Action
+		possibleActions = _deserializeActions(gameState.PossibleActions)
 	)
 	for {
 		num := u.pressAnyNumber()
-		var actionName string
-		var err error
-		actionName, input, err = numToAction(num, gameState)
-		if err != nil {
+		if num > len(possibleActions) {
 			continue
 		}
-		if actionName == truco.SAY_ENVIDO_QUIERO || actionName == truco.SAY_SON_BUENAS || actionName == truco.SAY_SON_MEJORES {
-			input = fmt.Sprintf(`{"name":"%v","score":%d}`, actionName, gameState.Hands[gameState.TurnPlayerID].EnvidoScore())
-		}
-		if actionName == "reveal_card" {
-			err := u.render(playerID, gameState, PRINT_MODE_WHICH_CARD_REVEAL)
-			if err != nil {
-				return nil, err
-			}
-			var card truco.Card
-			for {
-				which := u.pressAnyNumber()
-				if which > len(gameState.Hands[gameState.TurnPlayerID].Unrevealed) {
-					continue
-				}
-				if which == 0 {
-					return u.play(playerID, gameState)
-				}
-				card = gameState.Hands[gameState.TurnPlayerID].Unrevealed[which-1]
-				break
-			}
-			jsonCard, _ := json.Marshal(card)
-			input = fmt.Sprintf(`{"name":"reveal_card","card":%v}`, string(jsonCard))
-		}
-
-		action, err = truco.DeserializeAction([]byte(input))
-		if err != nil {
-			fmt.Printf("Invalid action:	%v\n", err)
-			continue
-		}
+		action = possibleActions[num-1]
 		break
 	}
 	return action, nil
-}
-
-func numToAction(num int, state truco.GameState) (string, string, error) {
-	actions := state.CalculatePossibleActions()
-	if num > len(actions) {
-		return "", "", fmt.Errorf("Invalid action")
-	}
-
-	return actions[num-1], fmt.Sprintf(`{"name":"%v"}`, actions[num-1]), nil
 }
 
 type printMode int
 
 const (
 	PRINT_MODE_NORMAL printMode = iota
-	PRINT_MODE_WHICH_CARD_REVEAL
 	PRINT_MODE_SHOW_ROUND_RESULT
 	PRINT_MODE_END
 )
@@ -159,7 +117,7 @@ func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
 	printAt(0, my-4, unrevealed)
 
 	switch mode {
-	case PRINT_MODE_NORMAL, PRINT_MODE_WHICH_CARD_REVEAL:
+	case PRINT_MODE_NORMAL:
 		lastActionString, err := getLastActionString(you, state)
 		if err != nil {
 			return err
@@ -223,15 +181,11 @@ func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
 	if state.TurnPlayerID == playerID {
 		if mode == PRINT_MODE_NORMAL {
 			actionsString := ""
-			for i, action := range state.PossibleActions {
+			for i, action := range _deserializeActions(state.PossibleActions) {
 				action := spanishAction(action, state)
 				actionsString += fmt.Sprintf("%d. %s   ", i+1, action)
 			}
 			printAt(0, my-2, actionsString)
-		} else if mode == PRINT_MODE_WHICH_CARD_REVEAL {
-			printAt(0, my-2, "¿Cuál carta querés tirar?")
-			unrevealed = getCardsString(hand.Unrevealed, true, true)
-			printAt(0, my-1, unrevealed)
 		}
 	} else {
 		_, my := termbox.Size()
@@ -416,10 +370,11 @@ func spanishScore(score int) string {
 	return fmt.Sprintf("%d buenas", score-14)
 }
 
-func spanishAction(action string, state truco.GameState) string {
-	switch action {
+func spanishAction(action truco.Action, state truco.GameState) string {
+	switch action.GetName() {
 	case truco.REVEAL_CARD:
-		return "tirar carta"
+		_action := action.(*truco.ActionRevealCard)
+		return getCardString(_action.Card)
 	case truco.SAY_ENVIDO:
 		return "envido"
 	case truco.SAY_REAL_ENVIDO:
@@ -443,11 +398,20 @@ func spanishAction(action string, state truco.GameState) string {
 	case truco.SAY_SON_BUENAS:
 		return "son buenas"
 	case truco.SAY_SON_MEJORES:
-		score := state.Hands[state.TurnPlayerID].EnvidoScore()
-		return fmt.Sprintf("%v son mejores", score)
+		_action := action.(*truco.ActionSaySonMejores)
+		return fmt.Sprintf("%v son mejores", _action.Score)
 	case truco.SAY_ME_VOY_AL_MAZO:
 		return "me voy al mazo"
 	default:
 		return "???"
 	}
+}
+
+func _deserializeActions(as []json.RawMessage) []truco.Action {
+	_as := []truco.Action{}
+	for _, a := range as {
+		_a, _ := truco.DeserializeAction(a)
+		_as = append(_as, _a)
+	}
+	return _as
 }

@@ -25,17 +25,6 @@ func (a ActionRevealCard) IsPossible(g GameState) bool {
 		playerID: g.CurrentPlayerID(),
 	}
 
-	// Note that CalculatePossibleActions will call this without arguments
-	// in this case, let's try all unrevealed cards
-	if a.Card == (Card{}) {
-		result := false
-		for _, card := range g.Hands[g.CurrentPlayerID()].Unrevealed {
-			step.card = card
-			result = result || g.CardRevealSequence.CanAddStep(step, g)
-		}
-		return result
-	}
-
 	return g.CardRevealSequence.CanAddStep(step, g)
 }
 
