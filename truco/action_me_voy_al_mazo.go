@@ -30,8 +30,8 @@ func (a ActionSayMeVoyAlMazo) Run(g *GameState) error {
 			return err
 		}
 	}
-	g.CurrentRoundResult.TrucoPoints = cost
-	g.CurrentRoundResult.TrucoWinnerPlayerID = g.TurnOpponentPlayerID
+	g.RoundsLog[g.RoundNumber].TrucoPoints = cost
+	g.RoundsLog[g.RoundNumber].TrucoWinnerPlayerID = g.TurnOpponentPlayerID
 	g.Players[g.TurnOpponentPlayerID].Score += cost
 	g.IsRoundFinished = true
 	return nil

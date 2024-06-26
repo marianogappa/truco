@@ -18,17 +18,20 @@ func (g GameState) AnyTrucoActionIsPossible(a Action) bool {
 	}
 	// Only the player who said "quiero" last can raise the stakes, unless quiero hasn't been said yet,
 	// which can only happen if the last action is "truco"
-	if !g.IsLastActionOfName(SAY_TRUCO) && (a.GetName() == SAY_QUIERO_RETRUCO || a.GetName() == SAY_QUIERO_VALE_CUATRO) && g.TrucoQuieroOwnerPlayerId != g.TurnPlayerID {
+	if !g.IsLastActionOfName(SAY_TRUCO) &&
+		(a.GetName() == SAY_QUIERO_RETRUCO || a.GetName() == SAY_QUIERO_VALE_CUATRO) &&
+		g.TrucoSequence.QuieroOwnerPlayerID != g.TurnPlayerID {
 		return false
 	}
 	return g.TrucoSequence.CanAddStep(a.GetName())
 }
 
 func (g GameState) IsLastActionOfName(name string) bool {
-	if len(g.Actions) == 0 {
+	actionsLog := g.RoundsLog[g.RoundNumber].ActionsLog
+	if len(actionsLog) == 0 {
 		return false
 	}
-	lastActionBs := g.Actions[len(g.Actions)-1]
+	lastActionBs := actionsLog[len(actionsLog)-1].Action
 	lastAction, err := DeserializeAction(lastActionBs)
 	if err != nil {
 		return false

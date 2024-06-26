@@ -58,6 +58,8 @@ func (a ActionSayEnvidoNoQuiero) Run(g *GameState) error {
 	if err != nil {
 		return err
 	}
+	g.RoundsLog[g.RoundNumber].EnvidoPoints = cost
+	g.RoundsLog[g.RoundNumber].EnvidoWinnerPlayerID = g.TurnOpponentPlayerID
 	g.Players[g.TurnOpponentPlayerID].Score += cost
 	return nil
 }
@@ -75,7 +77,7 @@ func (a ActionSayTrucoQuiero) Run(g *GameState) error {
 		return errActionNotPossible
 	}
 	g.TrucoSequence.AddStep(a.GetName())
-	g.TrucoQuieroOwnerPlayerId = g.TurnPlayerID
+	g.TrucoSequence.QuieroOwnerPlayerID = g.TurnPlayerID
 	return nil
 }
 
@@ -89,8 +91,8 @@ func (a ActionSayTrucoNoQuiero) Run(g *GameState) error {
 	if err != nil {
 		return err
 	}
-	g.CurrentRoundResult.TrucoPoints = cost
-	g.CurrentRoundResult.TrucoWinnerPlayerID = g.TurnOpponentPlayerID
+	g.RoundsLog[g.RoundNumber].TrucoPoints = cost
+	g.RoundsLog[g.RoundNumber].TrucoWinnerPlayerID = g.TurnOpponentPlayerID
 	g.Players[g.TurnOpponentPlayerID].Score += cost
 	return nil
 }

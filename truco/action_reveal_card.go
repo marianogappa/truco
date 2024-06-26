@@ -58,8 +58,8 @@ func (a ActionRevealCard) Run(g *GameState) error {
 		}
 
 		g.Players[g.CardRevealSequence.WinnerPlayerID()].Score += score
-		g.CurrentRoundResult.TrucoPoints = score
-		g.CurrentRoundResult.TrucoWinnerPlayerID = g.CardRevealSequence.WinnerPlayerID()
+		g.RoundsLog[g.RoundNumber].TrucoPoints = score
+		g.RoundsLog[g.RoundNumber].TrucoWinnerPlayerID = g.CardRevealSequence.WinnerPlayerID()
 	}
 	// If both players have revealed a card, then envido cannot be played anymore
 	if !g.IsEnvidoFinished && len(g.Players[g.TurnPlayerID].Hand.Revealed) >= 1 && len(g.Players[g.TurnOpponentPlayerID].Hand.Revealed) >= 1 {

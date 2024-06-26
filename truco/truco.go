@@ -25,14 +25,10 @@ type GameState struct {
 	// TurnOpponentPlayerID is the player ID of the opponent of the player whose turn it is.
 	TurnOpponentPlayerID int `json:"turnOpponentPlayerID"`
 
+	// Players is a map of player IDs to their respective hands and scores.
+	// There are 2 players in a game. Use TurnPlayerID and TurnOpponentPlayerID to index
+	// into this map, or iterate over it to discover player ids.
 	Players map[int]*Player `json:"players"`
-
-	// // Hands is a map of player IDs to their respective hands.
-	// Hands map[int]*Hand `json:"hands"`
-
-	// // Scores is a map of player IDs to their respective scores.
-	// // Scores go from 0 to 30.
-	// Scores map[int]int `json:"scores"`
 
 	// PossibleActions is a list of possible actions that the current player can take.
 	// Possible actions are calculated based on game state at the beginnin of the round and after
@@ -72,50 +68,28 @@ type GameState struct {
 	// a player reaches 30 points.
 	IsGameEnded bool `json:"isGameEnded"`
 
-	// IsRoundJustStarted is true if a round has just started (i.e. no actions have been run on this round).
-	// This isn't used at all by the engine. It's strictly for clients to know, since there's no way to
-	// relate actions to rounds. TODO: that's probably a problem?
-	IsRoundJustStarted bool `json:"isRoundJustStarted"`
-
 	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsEnded` is
 	// `true`. Otherwise, it's -1.
 	WinnerPlayerID int `json:"winnerPlayerID"`
-
-	// CurrentRoundResult contains the live results of the ongoing round for envido/truco winners & points.
-	// It is set when actions are run, and is reset at the beginning of each round. Be careful when using
-	// this in the client, because if the last action caused the round to finish, it will be reset before
-	// you can use it to summarise what happened. You should use `RoundResults` in this case.
-	CurrentRoundResult RoundResult `json:"currentRoundResult"`
 
 	// TrucoQuieroOwnerPlayerId is the player ID of the player who said "quiero" last in the truco
 	// sequence. This is used to determine who can raise the stakes in the truco sequence.
 	//
 	// TODO: this should probably be inside TrucoSequence?
-	TrucoQuieroOwnerPlayerId int `json:"trucoQuieroOwnerPlayerId"`
+	// TrucoQuieroOwnerPlayerId int `json:"trucoQuieroOwnerPlayerId"`
 
-	// Actions is the list of actions that have been run in the game.
-	// Each element is a JSON-serialized action. This is because `Action` is an interface, and we can't
-	// serialize it directly otherwise. Clients should use `DeserializeAction` to get the actual action.
+	// RoundsLog is the ordered list of logs of each round that was played in the game.
 	//
-	// TODO: rather than having "Actions", "HandsDealt", "RoundResults", "ActionOwnerPlayerIDs" as
-	// separate fields, we should have a single "ActionLog" field that contains all of these.
-	Actions []json.RawMessage `json:"actions"`
-
-	// HandsDealt is the list of hands that were dealt in the game. Each element is a map of player IDs to
-	// their respective hands.
-	HandsDealt []map[int]*Hand `json:"handsDealt"`
-
-	// RoundResults is the list of results of each round. Each element is a `RoundResult` struct.
-	// This is useful for clients to see the results of each round, since `CurrentRoundResult` is reset
-	// at the beginning of each round.
-	RoundResults []RoundResult `json:"roundResults"`
-
-	// ActionOwnerPlayerIDs is the list of player IDs who ran each action. There is no PlayerID field in
-	// the `Action` struct, mostly because it would be annoying to have to distrust the client who sends
-	// it.
+	// Use GameState.RoundNumber to index into this list (note thus that it's 1-indexed).
+	// This means that there is an empty round at the beginning of the list.
 	//
-	// Note: this definitely should be inside an "ActionLog" slice, instead of here.
-	ActionOwnerPlayerIDs []int `json:"actionOwnerPlayerIDs"`
+	// Note that there is a "live entry" for the current round. This entry will always have
+	// the HandsDealt, but the other fields depend on the stage the round is in. You can
+	// use the ActionsLog's length to determine if a round has just started.
+	//
+	// Note that, if the last action ran caused a round to finish, if you want to render
+	// the screen with the last action, you have to check the last action of the previous round instead!
+	RoundsLog []*RoundLog `json:"actionLog"`
 
 	deck *deck `json:"-"`
 }
@@ -128,8 +102,39 @@ type Player struct {
 	Score int `json:"score"`
 }
 
+// RoundLog is a log of a round that was played in the game
+type RoundLog struct {
+	// HandsDealt is a map from PlayerID to its hand durinf this round.
+	HandsDealt map[int]*Hand `json:"handsDealt"`
+
+	// For envido/truco winners and points, note that there is still a
+	// winner of 1 point if a player said "no quiero" to the envido/truco.
+	//
+	// If envido wasn't played at all, then EnvidoWinnerPlayerID is -1.
+	//
+	// At the end of a round, there will always be a TrucoWinnerPlayerID,
+	// even if truco wasn't played, implicitly by revealing the cards.
+
+	EnvidoWinnerPlayerID int `json:"envidoWinnerPlayerID"`
+	EnvidoPoints         int `json:"envidoPoints"`
+	TrucoWinnerPlayerID  int `json:"trucoWinnerPlayerID"`
+	TrucoPoints          int `json:"trucoPoints"`
+
+	// ActionsLog is the ordered list of actions of this round.
+	ActionsLog []ActionLog `json:"actionsLog"`
+}
+
+// ActionLog is a log of an action that was run in a round.
+type ActionLog struct {
+	// PlayerID is the player ID of the player who ran the action.
+	PlayerID int `json:"playerID"`
+
+	// Action is a JSON-serialized action. This is because `Action` is an interface, and we can't
+	// serialize it directly otherwise. Clients should use `truco.DeserializeAction`.`
+	Action json.RawMessage `json:"action"`
+}
+
 func New(opts ...func(*GameState)) *GameState {
-	// TODO: support taking player ids, ser/de, ...
 	gs := &GameState{
 		RoundTurnPlayerID: 1,
 		RoundNumber:       0,
@@ -139,7 +144,7 @@ func New(opts ...func(*GameState)) *GameState {
 		},
 		IsGameEnded:    false,
 		WinnerPlayerID: -1,
-		Actions:        []json.RawMessage{},
+		RoundsLog:      []*RoundLog{{}}, // initialised with an empty round to be 1-indexed
 		deck:           newDeck(),
 	}
 
@@ -153,30 +158,28 @@ func New(opts ...func(*GameState)) *GameState {
 }
 
 func (g *GameState) startNewRound() {
-	g.CurrentRoundResult = RoundResult{
-		EnvidoWinnerPlayerID: -1,
-		EnvidoPoints:         0,
-		TrucoWinnerPlayerID:  -1,
-		TrucoPoints:          0,
-	}
-
-	g.IsRoundJustStarted = true
 	g.RoundTurnPlayerID = g.OpponentOf(g.RoundTurnPlayerID)
 	g.RoundNumber++
 	g.TurnPlayerID = g.RoundTurnPlayerID
 	g.TurnOpponentPlayerID = g.OpponentOf(g.TurnPlayerID)
 	g.Players[g.TurnPlayerID].Hand = g.deck.dealHand()
 	g.Players[g.TurnOpponentPlayerID].Hand = g.deck.dealHand()
-	g.HandsDealt = append(g.HandsDealt, map[int]*Hand{
-		g.TurnPlayerID:         g.Players[g.TurnPlayerID].Hand,
-		g.TurnOpponentPlayerID: g.Players[g.TurnOpponentPlayerID].Hand,
-	})
 	g.EnvidoSequence = &EnvidoSequence{StartingPlayerID: -1}
-	g.TrucoSequence = &TrucoSequence{StartingPlayerID: -1}
+	g.TrucoSequence = &TrucoSequence{StartingPlayerID: -1, QuieroOwnerPlayerID: -1}
 	g.CardRevealSequence = &CardRevealSequence{}
 	g.IsEnvidoFinished = false
 	g.IsRoundFinished = false
-	g.TrucoQuieroOwnerPlayerId = -1
+	g.RoundsLog = append(g.RoundsLog, &RoundLog{
+		HandsDealt: map[int]*Hand{
+			g.TurnPlayerID:         g.Players[g.TurnPlayerID].Hand,
+			g.TurnOpponentPlayerID: g.Players[g.TurnOpponentPlayerID].Hand,
+		},
+		EnvidoWinnerPlayerID: -1,
+		EnvidoPoints:         0,
+		TrucoWinnerPlayerID:  -1,
+		TrucoPoints:          0,
+		ActionsLog:           []ActionLog{},
+	})
 	g.PossibleActions = _serializeActions(g.CalculatePossibleActions())
 }
 
@@ -192,14 +195,14 @@ func (g *GameState) RunAction(action Action) error {
 	if err != nil {
 		return err
 	}
-	g.IsRoundJustStarted = false
 	bs := SerializeAction(action)
-	g.Actions = append(g.Actions, bs)
-	g.ActionOwnerPlayerIDs = append(g.ActionOwnerPlayerIDs, g.TurnPlayerID)
+	g.RoundsLog[g.RoundNumber].ActionsLog = append(g.RoundsLog[g.RoundNumber].ActionsLog, ActionLog{
+		PlayerID: g.TurnPlayerID,
+		Action:   bs,
+	})
 
 	// Start new round if current round is finished
 	if !g.IsGameEnded && g.IsRoundFinished {
-		g.RoundResults = append(g.RoundResults, g.CurrentRoundResult)
 		g.startNewRound()
 		return nil
 	}

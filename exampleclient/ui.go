@@ -80,7 +80,9 @@ func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
 	)
 
 	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
-		hand = *state.HandsDealt[len(state.HandsDealt)-2][them]
+		// Note that RoundNumber has already been incremented
+		// so we need to get the previous round's hands.
+		hand = *state.RoundsLog[state.RoundNumber-1].HandsDealt[them]
 	}
 
 	var (
@@ -107,7 +109,9 @@ func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
 	hand = *state.Players[you].Hand
 
 	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
-		hand = *state.HandsDealt[len(state.HandsDealt)-2][you]
+		// Note that RoundNumber has already been incremented
+		// so we need to get the previous round's hands.
+		hand = *state.RoundsLog[state.RoundNumber-1].HandsDealt[you]
 	}
 
 	unrevealed = getCardsString(hand.Unrevealed, false, false)
@@ -125,27 +129,27 @@ func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
 
 		printAt(0, my/2, lastActionString)
 	case PRINT_MODE_SHOW_ROUND_RESULT:
-		lastActionString, err := getActionString(state.Actions[len(state.Actions)-1], state.ActionOwnerPlayerIDs[len(state.ActionOwnerPlayerIDs)-1], you)
+		lastRoundLog := state.RoundsLog[state.RoundNumber-1]
+		lastActionString, err := getActionString(lastRoundLog.ActionsLog[len(lastRoundLog.ActionsLog)-1], you)
 		if err != nil {
 			return err
 		}
 
 		printAt(0, my/2, lastActionString)
-		lastRoundResult := state.RoundResults[len(state.RoundResults)-1]
 
 		envidoPart := "el envido no se jugó"
-		if lastRoundResult.EnvidoWinnerPlayerID != -1 {
+		if lastRoundLog.EnvidoWinnerPlayerID != -1 {
 			envidoWinner := "vos"
 			won := "ganaste"
-			if lastRoundResult.EnvidoWinnerPlayerID == them {
+			if lastRoundLog.EnvidoWinnerPlayerID == them {
 				envidoWinner = "elle"
 				won = "ganó"
 			}
-			envidoPart = fmt.Sprintf("%v %v %v puntos por el envido", envidoWinner, won, lastRoundResult.EnvidoPoints)
+			envidoPart = fmt.Sprintf("%v %v %v puntos por el envido", envidoWinner, won, lastRoundLog.EnvidoPoints)
 		}
 		trucoWinner := "vos"
 		won := "ganaste"
-		if lastRoundResult.TrucoWinnerPlayerID == them {
+		if lastRoundLog.TrucoWinnerPlayerID == them {
 			trucoWinner = "elle"
 			won = "ganó"
 		}
@@ -155,11 +159,12 @@ func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
 			envidoPart,
 			trucoWinner,
 			won,
-			lastRoundResult.TrucoPoints,
+			lastRoundLog.TrucoPoints,
 		)
 		printAt(0, my/2+1, result)
 	case PRINT_MODE_END:
-		lastActionString, err := getActionString(state.Actions[len(state.Actions)-1], state.ActionOwnerPlayerIDs[len(state.ActionOwnerPlayerIDs)-1], you)
+		lastActionLog := state.RoundsLog[state.RoundNumber].ActionsLog[len(state.RoundsLog[state.RoundNumber].ActionsLog)-1]
+		lastActionString, err := getActionString(lastActionLog, you)
 		if err != nil {
 			return err
 		}
@@ -182,7 +187,7 @@ func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
 		if mode == PRINT_MODE_NORMAL {
 			actionsString := ""
 			for i, action := range _deserializeActions(state.PossibleActions) {
-				action := spanishAction(action, state)
+				action := spanishAction(action)
 				actionsString += fmt.Sprintf("%d. %s   ", i+1, action)
 			}
 			printAt(0, my-2, actionsString)
@@ -246,20 +251,21 @@ func suitEmoji(suit string) string {
 }
 
 func getLastActionString(playerID int, state truco.GameState) (string, error) {
-	if len(state.Actions) == 0 {
-		return "¡Empezó el juego!", nil
-	}
-	if state.IsRoundJustStarted {
+	actionsLog := state.RoundsLog[state.RoundNumber].ActionsLog
+
+	if len(actionsLog) == 0 {
+		if state.RoundNumber == 1 {
+			return "¡Empezó el juego!", nil
+		}
 		return "¡Empezó la mano!", nil
 	}
 
-	lastActionBs := state.Actions[len(state.Actions)-1]
-	lastActionOwnerPlayerID := state.ActionOwnerPlayerIDs[len(state.ActionOwnerPlayerIDs)-1]
-	return getActionString(lastActionBs, lastActionOwnerPlayerID, playerID)
+	lastActionLog := actionsLog[len(actionsLog)-1]
+	return getActionString(lastActionLog, playerID)
 }
 
-func getActionString(lastActionBs json.RawMessage, lastActionOwnerPlayerID int, playerID int) (string, error) {
-	lastAction, err := truco.DeserializeAction(lastActionBs)
+func getActionString(log truco.ActionLog, playerID int) (string, error) {
+	lastAction, err := truco.DeserializeAction(log.Action)
 	if err != nil {
 		return "", err
 	}
@@ -267,7 +273,7 @@ func getActionString(lastActionBs json.RawMessage, lastActionOwnerPlayerID int, 
 	said := "dijiste"
 	revealed := "tiraste"
 	who := "Vos"
-	if playerID != lastActionOwnerPlayerID {
+	if playerID != log.PlayerID {
 		who = "Elle"
 		said = "dijo"
 		revealed = "tiró"
@@ -370,7 +376,7 @@ func spanishScore(score int) string {
 	return fmt.Sprintf("%d buenas", score-14)
 }
 
-func spanishAction(action truco.Action, state truco.GameState) string {
+func spanishAction(action truco.Action) string {
 	switch action.GetName() {
 	case truco.REVEAL_CARD:
 		_action := action.(*truco.ActionRevealCard)
