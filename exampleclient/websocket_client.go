@@ -30,7 +30,7 @@ func Player(playerID int, address string) {
 			log.Fatal(err)
 		}
 
-		if gameState.IsEnded {
+		if gameState.IsGameEnded {
 			_ = ui.render(playerID, *gameState, PRINT_MODE_END)
 			return
 		}

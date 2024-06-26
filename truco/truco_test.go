@@ -6,50 +6,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// func TestTruco(t *testing.T) {
-// 	gameState := New()
-// 	err := gameState.RunAction(ActionSayRealEnvido{})
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	pretty, err := gameState.PrettyPrint()
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-
-// 	fmt.Printf("gameState: \n%v\n", pretty)
-// 	t.Fail()
-// }
-
 func TestInitialOptions(t *testing.T) {
 	gameState := New()
+
+	expectedActions := []Action{
+		newActionRevealCard(gameState.Players[gameState.TurnPlayerID].Hand.Unrevealed[0]),
+		newActionRevealCard(gameState.Players[gameState.TurnPlayerID].Hand.Unrevealed[1]),
+		newActionRevealCard(gameState.Players[gameState.TurnPlayerID].Hand.Unrevealed[2]),
+		newActionSayEnvido(),
+		newActionSayRealEnvido(),
+		newActionSayFaltaEnvido(),
+		newActionSayTruco(),
+		newActionSayMeVoyAlMazo(),
+	}
+
 	require.Equal(
 		t,
-		[]string{
-			"reveal_card",
-			"say_envido",
-			"say_real_envido",
-			"say_falta_envido",
-			"say_truco",
-			"say_me_voy_al_mazo",
-		},
+		_serializeActions(expectedActions),
 		gameState.PossibleActions,
 	)
 }
 
 func TestAfterRealEnvidoOptions(t *testing.T) {
 	gameState := New()
-	err := gameState.RunAction(ActionSayRealEnvido{act: act{Name: SAY_REAL_ENVIDO}})
+
+	expectedActions := []Action{
+		newActionSayFaltaEnvido(),
+		newActionSayEnvidoQuiero(gameState.Players[gameState.TurnOpponentPlayerID].Hand.EnvidoScore()),
+		newActionSayEnvidoNoQuiero(),
+	}
+
+	err := gameState.RunAction(newActionSayRealEnvido())
 	if err != nil {
 		t.Fatal(err)
 	}
 	require.Equal(
 		t,
-		[]string{
-			"say_falta_envido",
-			"say_envido_quiero",
-			"say_envido_no_quiero",
-		},
+		_serializeActions(expectedActions),
 		gameState.PossibleActions,
 	)
 }

@@ -22,12 +22,17 @@ type GameState struct {
 	// They are the same at the beginning of the round.
 	TurnPlayerID int `json:"turnPlayerID"`
 
-	// Hands is a map of player IDs to their respective hands.
-	Hands map[int]*Hand `json:"hands"`
+	// TurnOpponentPlayerID is the player ID of the opponent of the player whose turn it is.
+	TurnOpponentPlayerID int `json:"turnOpponentPlayerID"`
 
-	// Scores is a map of player IDs to their respective scores.
-	// Scores go from 0 to 30.
-	Scores map[int]int `json:"scores"`
+	Players map[int]*Player `json:"players"`
+
+	// // Hands is a map of player IDs to their respective hands.
+	// Hands map[int]*Hand `json:"hands"`
+
+	// // Scores is a map of player IDs to their respective scores.
+	// // Scores go from 0 to 30.
+	// Scores map[int]int `json:"scores"`
 
 	// PossibleActions is a list of possible actions that the current player can take.
 	// Possible actions are calculated based on game state at the beginnin of the round and after
@@ -51,25 +56,26 @@ type GameState struct {
 	// A faceoff result will have the playerID of the winner, or -1 if it was a tie.
 	CardRevealSequence *CardRevealSequence `json:"cardRevealSequence"`
 
-	// EnvidoFinished is true if the envido sequence is finished, or can no longer be continued.
+	// IsEnvidoFinished is true if the envido sequence is finished, or can no longer be continued.
 	// TODO: can we remove this? Looks redundant to other state. But need tests first.
-	EnvidoFinished bool `json:"envidoFinished"`
+	IsEnvidoFinished bool `json:"isEnvidoFinished"`
 
-	// EnvidoWinnerPlayerID is the player ID of the player who won the envido sequence.
-	// TODO: looks like this is assigned to but never used. Can we remove?
-	EnvidoWinnerPlayerID int `json:"envidoWinnerPlayerID"`
-
-	// RoundFinished is true if the current round is finished. Each action's `Run()` method is responsible
+	// IsRoundFinished is true if the current round is finished. Each action's `Run()` method is responsible
 	// for setting this. During `GameState.RunAction()`, If the action's `Run()` method sets this to true,
 	// then `GameState.startNewRound()` will be called.
 	//
 	// Clients are not really notified of a round change, so they should keep track of the "last round
 	// number" to see if it changes.
-	RoundFinished bool `json:"roundFinished"`
+	IsRoundFinished bool `json:"isRoundFinished"`
 
-	// IsEnded is true if the whole game is ended, rather than an individual round. This happens when
+	// IsGameEnded is true if the whole game is ended, rather than an individual round. This happens when
 	// a player reaches 30 points.
-	IsEnded bool `json:"isEnded"`
+	IsGameEnded bool `json:"isGameEnded"`
+
+	// IsRoundJustStarted is true if a round has just started (i.e. no actions have been run on this round).
+	// This isn't used at all by the engine. It's strictly for clients to know, since there's no way to
+	// relate actions to rounds. TODO: that's probably a problem?
+	IsRoundJustStarted bool `json:"isRoundJustStarted"`
 
 	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsEnded` is
 	// `true`. Otherwise, it's -1.
@@ -80,11 +86,6 @@ type GameState struct {
 	// this in the client, because if the last action caused the round to finish, it will be reset before
 	// you can use it to summarise what happened. You should use `RoundResults` in this case.
 	CurrentRoundResult RoundResult `json:"currentRoundResult"`
-
-	// RoundJustStarted is true if a round has just started (i.e. no actions have been run on this round).
-	// This isn't used at all by the engine. It's strictly for clients to know, since there's no way to
-	// relate actions to rounds. TODO: that's probably a problem?
-	RoundJustStarted bool `json:"roundJustStarted"`
 
 	// TrucoQuieroOwnerPlayerId is the player ID of the player who said "quiero" last in the truco
 	// sequence. This is used to determine who can raise the stakes in the truco sequence.
@@ -119,17 +120,27 @@ type GameState struct {
 	deck *deck `json:"-"`
 }
 
+type Player struct {
+	// Hands contains the revealed and unrevealed cards of the player.
+	Hand *Hand `json:"hand"`
+
+	// Score is the player's scores (from 0 to 30).
+	Score int `json:"score"`
+}
+
 func New(opts ...func(*GameState)) *GameState {
 	// TODO: support taking player ids, ser/de, ...
 	gs := &GameState{
 		RoundTurnPlayerID: 1,
 		RoundNumber:       0,
-		Scores:            map[int]int{0: 0, 1: 0},
-		Hands:             map[int]*Hand{0: nil, 1: nil},
-		IsEnded:           false,
-		WinnerPlayerID:    -1,
-		Actions:           []json.RawMessage{},
-		deck:              newDeck(),
+		Players: map[int]*Player{
+			0: {Hand: nil, Score: 0},
+			1: {Hand: nil, Score: 0},
+		},
+		IsGameEnded:    false,
+		WinnerPlayerID: -1,
+		Actions:        []json.RawMessage{},
+		deck:           newDeck(),
 	}
 
 	for _, opt := range opts {
@@ -149,33 +160,28 @@ func (g *GameState) startNewRound() {
 		TrucoPoints:          0,
 	}
 
-	g.RoundJustStarted = true
+	g.IsRoundJustStarted = true
 	g.RoundTurnPlayerID = g.OpponentOf(g.RoundTurnPlayerID)
 	g.RoundNumber++
 	g.TurnPlayerID = g.RoundTurnPlayerID
-
-	handPlayer0 := g.deck.dealHand()
-	handPlayer1 := g.deck.dealHand()
+	g.TurnOpponentPlayerID = g.OpponentOf(g.TurnPlayerID)
+	g.Players[g.TurnPlayerID].Hand = g.deck.dealHand()
+	g.Players[g.TurnOpponentPlayerID].Hand = g.deck.dealHand()
 	g.HandsDealt = append(g.HandsDealt, map[int]*Hand{
-		g.RoundTurnPlayerID:               handPlayer0,
-		g.OpponentOf(g.RoundTurnPlayerID): handPlayer1,
+		g.TurnPlayerID:         g.Players[g.TurnPlayerID].Hand,
+		g.TurnOpponentPlayerID: g.Players[g.TurnOpponentPlayerID].Hand,
 	})
-	g.Hands = map[int]*Hand{
-		g.RoundTurnPlayerID:               handPlayer0,
-		g.OpponentOf(g.RoundTurnPlayerID): handPlayer1,
-	}
-	g.EnvidoWinnerPlayerID = -1
 	g.EnvidoSequence = &EnvidoSequence{StartingPlayerID: -1}
-	g.TrucoSequence = &TrucoSequence{}
+	g.TrucoSequence = &TrucoSequence{StartingPlayerID: -1}
 	g.CardRevealSequence = &CardRevealSequence{}
-	g.EnvidoFinished = false
-	g.RoundFinished = false
+	g.IsEnvidoFinished = false
+	g.IsRoundFinished = false
 	g.TrucoQuieroOwnerPlayerId = -1
 	g.PossibleActions = _serializeActions(g.CalculatePossibleActions())
 }
 
 func (g *GameState) RunAction(action Action) error {
-	if g.IsEnded {
+	if g.IsGameEnded {
 		return errGameIsEnded
 	}
 
@@ -186,32 +192,29 @@ func (g *GameState) RunAction(action Action) error {
 	if err != nil {
 		return err
 	}
-	g.RoundJustStarted = false
+	g.IsRoundJustStarted = false
 	bs := SerializeAction(action)
 	g.Actions = append(g.Actions, bs)
-	g.ActionOwnerPlayerIDs = append(g.ActionOwnerPlayerIDs, g.CurrentPlayerID())
+	g.ActionOwnerPlayerIDs = append(g.ActionOwnerPlayerIDs, g.TurnPlayerID)
 
 	// Start new round if current round is finished
-	if !g.IsEnded && g.RoundFinished {
+	if !g.IsGameEnded && g.IsRoundFinished {
 		g.RoundResults = append(g.RoundResults, g.CurrentRoundResult)
 		g.startNewRound()
 		return nil
 	}
 
 	// Switch player turn within current round (unless current action doesn't yield turn)
-	if !g.IsEnded && !g.RoundFinished && action.YieldsTurn(*g) {
-		g.TurnPlayerID = g.OpponentOf(g.TurnPlayerID)
+	if !g.IsGameEnded && !g.IsRoundFinished && action.YieldsTurn(*g) {
+		g.TurnPlayerID, g.TurnOpponentPlayerID = g.TurnOpponentPlayerID, g.TurnPlayerID
 	}
 
 	// Handle end of game due to score
-	// TODO: this changes if players are not 0 & 1 (or more than 2 players)
-	if g.Scores[0] >= 30 || g.Scores[1] >= 30 {
-		g.IsEnded = true
-		g.Scores[0] = min(30, g.Scores[0])
-		g.Scores[1] = min(30, g.Scores[1])
-		g.WinnerPlayerID = 0
-		if g.Scores[1] > g.Scores[0] {
-			g.WinnerPlayerID = 1
+	for playerID := range g.Players {
+		if g.Players[playerID].Score >= 30 {
+			g.Players[playerID].Score = 30
+			g.IsGameEnded = true
+			g.WinnerPlayerID = playerID
 		}
 	}
 
@@ -219,36 +222,10 @@ func (g *GameState) RunAction(action Action) error {
 	return nil
 }
 
-func (g GameState) CurrentPlayerID() int {
-	return g.TurnPlayerID
-}
-
-func (g GameState) CurrentPlayerScore() int {
-	return g.Scores[g.TurnPlayerID]
-}
-
-func (g GameState) OpponentPlayerID() int {
-	return g.OpponentOf(g.CurrentPlayerID())
-}
-
-func (g GameState) OpponentPlayerScore() int {
-	return g.Scores[g.OpponentPlayerID()]
-}
-
-func (g GameState) RoundTurnOpponentPlayerID() int {
-	return g.OpponentOf(g.RoundTurnPlayerID)
-}
-
 func (g GameState) OpponentOf(playerID int) int {
-	// N.B. this function doesn't check if playerID is valid
-	players := []int{}
-	for playerID := range g.Hands {
-		players = append(players, playerID)
-	}
-	// TODO: This still assumes 2 players, but at least it doesn't hardcode the player IDs
-	for _, p := range players {
-		if p != playerID {
-			return p
+	for id := range g.Players {
+		if id != playerID {
+			return id
 		}
 	}
 	return -1 // Unreachable
@@ -281,11 +258,11 @@ var (
 )
 
 func (g GameState) CalculatePossibleActions() []Action {
-	envidoScore := g.Hands[g.TurnPlayerID].EnvidoScore()
+	envidoScore := g.Players[g.TurnPlayerID].Hand.EnvidoScore()
 
 	allActions := []Action{}
 
-	for _, card := range g.Hands[g.TurnPlayerID].Unrevealed {
+	for _, card := range g.Players[g.TurnPlayerID].Hand.Unrevealed {
 		allActions = append(allActions, newActionRevealCard(card))
 	}
 

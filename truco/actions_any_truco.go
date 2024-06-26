@@ -13,7 +13,7 @@ func (a ActionSayQuieroRetruco) Run(g *GameState) error    { return g.AnyTrucoAc
 func (a ActionSayQuieroValeCuatro) Run(g *GameState) error { return g.AnyTrucoActionRunAction(a) }
 
 func (g GameState) AnyTrucoActionIsPossible(a Action) bool {
-	if !g.EnvidoSequence.IsEmpty() && !g.EnvidoFinished {
+	if !g.EnvidoSequence.IsEmpty() && !g.IsEnvidoFinished {
 		return false
 	}
 	// Only the player who said "quiero" last can raise the stakes, unless quiero hasn't been said yet,

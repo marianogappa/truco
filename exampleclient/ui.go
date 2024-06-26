@@ -39,7 +39,7 @@ func (u *ui) play(playerID int, gameState truco.GameState) (truco.Action, error)
 		return nil, err
 	}
 
-	if gameState.IsEnded {
+	if gameState.IsGameEnded {
 		return nil, nil
 	}
 
@@ -76,7 +76,7 @@ func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
 		mx, my = termbox.Size()
 		you    = playerID
 		them   = state.OpponentOf(you)
-		hand   = *state.Hands[them]
+		hand   = *state.Players[them].Hand
 	)
 
 	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
@@ -101,10 +101,10 @@ func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
 		themMano = " (mano)"
 	}
 
-	printUpToAt(mx-1, 1, fmt.Sprintf("Vos%v %v", youMano, spanishScore(state.Scores[you])))
-	printUpToAt(mx-1, 2, fmt.Sprintf("Elle%v %v", themMano, spanishScore(state.Scores[them])))
+	printUpToAt(mx-1, 1, fmt.Sprintf("Vos%v %v", youMano, spanishScore(state.Players[you].Score)))
+	printUpToAt(mx-1, 2, fmt.Sprintf("Elle%v %v", themMano, spanishScore(state.Players[them].Score)))
 
-	hand = *state.Hands[you]
+	hand = *state.Players[you].Hand
 
 	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
 		hand = *state.HandsDealt[len(state.HandsDealt)-2][you]
@@ -249,7 +249,7 @@ func getLastActionString(playerID int, state truco.GameState) (string, error) {
 	if len(state.Actions) == 0 {
 		return "¡Empezó el juego!", nil
 	}
-	if state.RoundJustStarted {
+	if state.IsRoundJustStarted {
 		return "¡Empezó la mano!", nil
 	}
 

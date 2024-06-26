@@ -6,15 +6,15 @@ type ActionSaySonMejores struct {
 }
 
 func (a ActionSaySonMejores) IsPossible(g GameState) bool {
-	if g.EnvidoFinished {
+	if g.IsEnvidoFinished {
 		return false
 	}
 	var (
 		mano       = g.RoundTurnPlayerID
 		me         = g.TurnPlayerID
-		other      = g.OpponentOf(g.TurnPlayerID)
-		meScore    = g.Hands[me].EnvidoScore()
-		otherScore = g.Hands[other].EnvidoScore()
+		other      = g.TurnOpponentPlayerID
+		meScore    = g.Players[me].Hand.EnvidoScore()
+		otherScore = g.Players[other].Hand.EnvidoScore()
 	)
 
 	// TODO: should I allow people to lose voluntarily?
@@ -34,15 +34,14 @@ func (a ActionSaySonMejores) Run(g *GameState) error {
 		return errActionNotPossible
 	}
 	g.EnvidoSequence.AddStep(a.GetName())
-	cost, err := g.EnvidoSequence.Cost(g.CurrentPlayerScore(), g.OpponentPlayerScore())
+	cost, err := g.EnvidoSequence.Cost(g.Players[g.TurnPlayerID].Score, g.Players[g.TurnOpponentPlayerID].Score)
 	if err != nil {
 		return err
 	}
 	g.CurrentRoundResult.EnvidoPoints = cost
-	g.CurrentRoundResult.EnvidoWinnerPlayerID = g.OpponentOf(g.CurrentPlayerID())
-	g.EnvidoWinnerPlayerID = g.CurrentPlayerID()
-	g.EnvidoFinished = true
-	g.Scores[g.CurrentPlayerID()] += cost
+	g.CurrentRoundResult.EnvidoWinnerPlayerID = g.TurnPlayerID
+	g.IsEnvidoFinished = true
+	g.Players[g.TurnPlayerID].Score += cost
 	return nil
 }
 
