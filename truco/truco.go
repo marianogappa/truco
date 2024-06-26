@@ -351,13 +351,6 @@ func DeserializeAction(bs []byte) (Action, error) {
 	return action, nil
 }
 
-type RoundResult struct {
-	EnvidoWinnerPlayerID int `json:"envidoWinnerPlayerID"`
-	EnvidoPoints         int `json:"envidoPoints"`
-	TrucoWinnerPlayerID  int `json:"trucoWinnerPlayerID"`
-	TrucoPoints          int `json:"trucoPoints"`
-}
-
 func _serializeActions(as []Action) []json.RawMessage {
 	_as := []json.RawMessage{}
 	for _, a := range as {
