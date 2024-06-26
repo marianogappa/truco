@@ -13,7 +13,7 @@ func (a ActionSayFaltaEnvido) Run(g *GameState) error { return g.AnyEnvidoAction
 func (a ActionSayRealEnvido) Run(g *GameState) error  { return g.AnyEnvidoActionTypeRunAction(a) }
 
 func (g GameState) AnyEnvidoActionTypeIsPossible(a Action) bool {
-	if g.EnvidoFinished {
+	if g.IsEnvidoFinished {
 		return false
 	}
 	// If there was a "truco" and an answer to it, regardless when, envido is not possible anymore.
@@ -28,7 +28,7 @@ func (g GameState) AnyEnvidoActionTypeIsPossible(a Action) bool {
 }
 
 func (g *GameState) AnyEnvidoActionTypeRunAction(a Action) error {
-	if g.EnvidoFinished {
+	if g.IsEnvidoFinished {
 		return errEnvidoFinished
 	}
 	if !g.AnyEnvidoActionTypeIsPossible(a) {

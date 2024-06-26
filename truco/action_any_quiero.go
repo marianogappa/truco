@@ -9,14 +9,14 @@ type ActionSayTrucoQuiero struct{ act }
 type ActionSayTrucoNoQuiero struct{ act }
 
 func (a ActionSayEnvidoNoQuiero) IsPossible(g GameState) bool {
-	if g.EnvidoFinished {
+	if g.IsEnvidoFinished {
 		return false
 	}
 	return g.EnvidoSequence.CanAddStep(a.GetName())
 }
 
 func (a ActionSayEnvidoQuiero) IsPossible(g GameState) bool {
-	if g.EnvidoFinished {
+	if g.IsEnvidoFinished {
 		return false
 	}
 	return g.EnvidoSequence.CanAddStep(a.GetName())
@@ -53,12 +53,14 @@ func (a ActionSayEnvidoNoQuiero) Run(g *GameState) error {
 		return errActionNotPossible
 	}
 	g.EnvidoSequence.AddStep(a.GetName())
-	g.EnvidoFinished = true
-	cost, err := g.EnvidoSequence.Cost(g.CurrentPlayerScore(), g.OpponentPlayerScore())
+	g.IsEnvidoFinished = true
+	cost, err := g.EnvidoSequence.Cost(g.Players[g.TurnPlayerID].Score, g.Players[g.TurnOpponentPlayerID].Score)
 	if err != nil {
 		return err
 	}
-	g.Scores[g.OpponentPlayerID()] += cost
+	g.RoundsLog[g.RoundNumber].EnvidoPoints = cost
+	g.RoundsLog[g.RoundNumber].EnvidoWinnerPlayerID = g.TurnOpponentPlayerID
+	g.Players[g.TurnOpponentPlayerID].Score += cost
 	return nil
 }
 
@@ -75,7 +77,7 @@ func (a ActionSayTrucoQuiero) Run(g *GameState) error {
 		return errActionNotPossible
 	}
 	g.TrucoSequence.AddStep(a.GetName())
-	g.TrucoQuieroOwnerPlayerId = g.TurnPlayerID
+	g.TrucoSequence.QuieroOwnerPlayerID = g.TurnPlayerID
 	return nil
 }
 
@@ -84,14 +86,14 @@ func (a ActionSayTrucoNoQuiero) Run(g *GameState) error {
 		return errActionNotPossible
 	}
 	g.TrucoSequence.AddStep(a.GetName())
-	g.RoundFinished = true
+	g.IsRoundFinished = true
 	cost, err := g.TrucoSequence.Cost()
 	if err != nil {
 		return err
 	}
-	g.CurrentRoundResult.TrucoPoints = cost
-	g.CurrentRoundResult.TrucoWinnerPlayerID = g.OpponentPlayerID()
-	g.Scores[g.OpponentPlayerID()] += cost
+	g.RoundsLog[g.RoundNumber].TrucoPoints = cost
+	g.RoundsLog[g.RoundNumber].TrucoWinnerPlayerID = g.TurnOpponentPlayerID
+	g.Players[g.TurnOpponentPlayerID].Score += cost
 	return nil
 }
 

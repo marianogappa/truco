@@ -11,7 +11,7 @@ func NewActionRevealCard(card Card) ActionRevealCard {
 
 func (a ActionRevealCard) IsPossible(g GameState) bool {
 	// If envido was said and it hasn't finished, then the card can't be revealed
-	if !g.EnvidoFinished && !g.EnvidoSequence.IsEmpty() && !g.EnvidoSequence.IsFinished() {
+	if !g.IsEnvidoFinished && !g.EnvidoSequence.IsEmpty() && !g.EnvidoSequence.IsFinished() {
 		return false
 	}
 
@@ -22,7 +22,7 @@ func (a ActionRevealCard) IsPossible(g GameState) bool {
 
 	step := CardRevealSequenceStep{
 		card:     a.Card,
-		playerID: g.CurrentPlayerID(),
+		playerID: g.TurnPlayerID,
 	}
 
 	return g.CardRevealSequence.CanAddStep(step, g)
@@ -34,15 +34,15 @@ func (a ActionRevealCard) Run(g *GameState) error {
 	}
 	step := CardRevealSequenceStep{
 		card:     a.Card,
-		playerID: g.CurrentPlayerID(),
+		playerID: g.TurnPlayerID,
 	}
 	g.CardRevealSequence.AddStep(step, *g)
-	err := g.Hands[g.CurrentPlayerID()].RevealCard(a.Card)
+	err := g.Players[g.TurnPlayerID].Hand.RevealCard(a.Card)
 	if err != nil {
 		return err
 	}
 	if g.CardRevealSequence.IsFinished() {
-		g.RoundFinished = true
+		g.IsRoundFinished = true
 
 		var score int
 
@@ -57,13 +57,13 @@ func (a ActionRevealCard) Run(g *GameState) error {
 			score = cost
 		}
 
-		g.Scores[g.CardRevealSequence.WinnerPlayerID()] += score
-		g.CurrentRoundResult.TrucoPoints = score
-		g.CurrentRoundResult.TrucoWinnerPlayerID = g.CardRevealSequence.WinnerPlayerID()
+		g.Players[g.CardRevealSequence.WinnerPlayerID()].Score += score
+		g.RoundsLog[g.RoundNumber].TrucoPoints = score
+		g.RoundsLog[g.RoundNumber].TrucoWinnerPlayerID = g.CardRevealSequence.WinnerPlayerID()
 	}
 	// If both players have revealed a card, then envido cannot be played anymore
-	if !g.EnvidoFinished && len(g.Hands[g.TurnPlayerID].Revealed) >= 1 && len(g.Hands[g.OpponentOf(g.TurnPlayerID)].Revealed) >= 1 {
-		g.EnvidoFinished = true
+	if !g.IsEnvidoFinished && len(g.Players[g.TurnPlayerID].Hand.Revealed) >= 1 && len(g.Players[g.TurnOpponentPlayerID].Hand.Revealed) >= 1 {
+		g.IsEnvidoFinished = true
 	}
 	return nil
 }

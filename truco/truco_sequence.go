@@ -48,8 +48,13 @@ type TrucoSequence struct {
 	// Sub-sequences are separated by "quiero" actions.
 	//
 	// StartingPlayerID holds the player ID that started the _current_ sub-sequence.
-	StartingPlayerID int      `json:"starting_player_id"`
-	Sequence         []string `json:"sequence"`
+	StartingPlayerID int `json:"starting_player_id"`
+
+	// QuieroOwnerPlayerID is the player ID of the player who said "quiero" last in the truco
+	// sequence. This is used to determine who can raise the stakes in the truco sequence.
+	QuieroOwnerPlayerID int `json:"quiero_owner_player_id"`
+
+	Sequence []string `json:"sequence"`
 }
 
 func (ts TrucoSequence) String() string {

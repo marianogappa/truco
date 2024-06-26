@@ -109,8 +109,8 @@ func TestEnvidoScore(t *testing.T) {
 		t.Run(fmt.Sprintf("%v vs %v", tt.hands[0], tt.hands[1]), func(t *testing.T) {
 			gameState := New(withDeck(newTestDeck(tt.hands)))
 
-			assert.Equal(t, tt.expected1, gameState.Hands[0].EnvidoScore())
-			assert.Equal(t, tt.expected2, gameState.Hands[1].EnvidoScore())
+			assert.Equal(t, tt.expected1, gameState.Players[0].Hand.EnvidoScore())
+			assert.Equal(t, tt.expected2, gameState.Players[1].Hand.EnvidoScore())
 		})
 	}
 }

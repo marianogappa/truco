@@ -160,7 +160,7 @@ func TestEnvidoSequence(t *testing.T) {
 					continue
 				}
 
-				cost, err := gameState.EnvidoSequence.Cost(gameState.Scores[gameState.TurnPlayerID], gameState.Scores[gameState.OpponentPlayerID()])
+				cost, err := gameState.EnvidoSequence.Cost(gameState.Players[gameState.TurnPlayerID].Score, gameState.Players[gameState.TurnOpponentPlayerID].Score)
 				require.NoError(t, err)
 				assert.Equal(t, step.expectedCostAfterRunning, cost, "at step %v expected cost %v but got %v", i, step.expectedCostAfterRunning, cost)
 			}

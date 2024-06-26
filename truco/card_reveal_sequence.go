@@ -12,11 +12,11 @@ type CardRevealSequence struct {
 
 func (crs CardRevealSequence) CanAddStep(step CardRevealSequenceStep, g GameState) bool {
 	// Sanity check: the action's player must be the current player
-	if g.CurrentPlayerID() != step.playerID {
+	if g.TurnPlayerID != step.playerID {
 		return false
 	}
 	// Sanity check: the card must be in the player's hand, and it must be unrevealed
-	if !g.Hands[step.playerID].HasUnrevealedCard(step.card) {
+	if !g.Players[step.playerID].Hand.HasUnrevealedCard(step.card) {
 		return false
 	}
 	// Sanity check: the sequence must not be finished (i.e. neither player must have won)
@@ -27,7 +27,7 @@ func (crs CardRevealSequence) CanAddStep(step CardRevealSequenceStep, g GameStat
 	case 0: // Sanity check: if there are no steps, the first step must be from the rounds's first player
 		return step.playerID == g.RoundTurnPlayerID
 	case 1: // If there is one step, the second step must be from the round's second player
-		return step.playerID == g.RoundTurnOpponentPlayerID()
+		return step.playerID == g.OpponentOf((g.RoundTurnPlayerID))
 	case 2: // If there are two steps, the third step must be from the first faceoff winner, or round's first player if tied
 		if crs.BistepWinners[0] == -1 {
 			return step.playerID == g.RoundTurnPlayerID
@@ -35,7 +35,7 @@ func (crs CardRevealSequence) CanAddStep(step CardRevealSequenceStep, g GameStat
 		return step.playerID == crs.BistepWinners[0]
 	case 3: // If there are 3 steps, the 4th step must be from the first faceoff winner's opponent, or round's second player if tied
 		if crs.BistepWinners[0] == -1 {
-			return step.playerID == g.RoundTurnOpponentPlayerID()
+			return step.playerID == g.OpponentOf((g.RoundTurnPlayerID))
 		}
 		return step.playerID == g.OpponentOf(crs.BistepWinners[0])
 	case 4:
