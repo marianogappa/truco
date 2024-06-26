@@ -32,6 +32,7 @@ func Player(playerID int, address string) {
 
 		if gameState.IsGameEnded {
 			_ = ui.render(playerID, *gameState, PRINT_MODE_END)
+			ui.pressAnyKey()
 			return
 		}
 
@@ -40,19 +41,28 @@ func Player(playerID int, address string) {
 			if err != nil {
 				log.Fatal(err)
 			}
+			ui.pressAnyKey()
 		}
 		lastRound = gameState.RoundNumber
 
+		if err := ui.render(playerID, *gameState, PRINT_MODE_NORMAL); err != nil {
+			log.Fatal(err)
+		}
 		if gameState.TurnPlayerID != playerID {
-			if err := ui.render(playerID, *gameState, PRINT_MODE_NORMAL); err != nil {
-				log.Fatal(err)
-			}
 			continue
 		}
 
-		action, err := ui.play(playerID, *gameState)
-		if err != nil {
-			log.Fatal("Invalid action:", err)
+		var (
+			action          truco.Action
+			possibleActions = _deserializeActions(gameState.PossibleActions)
+		)
+		for {
+			num := ui.pressAnyNumber()
+			if num > len(possibleActions) {
+				continue
+			}
+			action = possibleActions[num-1]
+			break
 		}
 
 		msg, _ := server.NewMessageAction(action)

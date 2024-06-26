@@ -3,9 +3,6 @@ package exampleclient
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-	"os"
-	"strconv"
 	"strings"
 
 	"github.com/marianogappa/truco/truco"
@@ -34,174 +31,201 @@ func (u *ui) Close() {
 	termbox.Close()
 }
 
-func (u *ui) play(playerID int, gameState truco.GameState) (truco.Action, error) {
-	if err := u.render(playerID, gameState, PRINT_MODE_NORMAL); err != nil {
-		return nil, err
-	}
-
-	if gameState.IsGameEnded {
-		return nil, nil
-	}
-
-	var (
-		action          truco.Action
-		possibleActions = _deserializeActions(gameState.PossibleActions)
-	)
-	for {
-		num := u.pressAnyNumber()
-		if num > len(possibleActions) {
-			continue
-		}
-		action = possibleActions[num-1]
-		break
-	}
-	return action, nil
-}
-
-type printMode int
+type renderMode int
 
 const (
-	PRINT_MODE_NORMAL printMode = iota
+	PRINT_MODE_NORMAL renderMode = iota
 	PRINT_MODE_SHOW_ROUND_RESULT
 	PRINT_MODE_END
 )
 
-func (u *ui) render(playerID int, state truco.GameState, mode printMode) error {
-	err := termbox.Clear(termbox.ColorWhite, termbox.ColorBlack)
-	if err != nil {
+type renderState struct {
+	mode            renderMode
+	turnPlayerID    int
+	winnerPlayerID  int
+	you             int
+	them            int
+	viewportWidth   int
+	viewportHeight  int
+	yourHand        truco.Hand
+	theirHand       truco.Hand
+	yourScore       int
+	theirScore      int
+	roundNumber     int
+	lastRoundLog    *truco.RoundLog
+	lastActionLog   *truco.ActionLog
+	possibleActions []truco.Action
+}
+
+func calculateRenderState(playerID int, state truco.GameState, mode renderMode) renderState {
+	var (
+		you                           = playerID
+		turnPlayerID                  = state.TurnPlayerID
+		winnerPlayerID                = state.WinnerPlayerID
+		them                          = state.OpponentOf(you)
+		viewportWidth, viewportHeight = termbox.Size()
+		yourHand                      = *state.Players[you].Hand
+		theirHand                     = *state.Players[them].Hand
+		yourScore                     = state.Players[you].Score
+		theirScore                    = state.Players[them].Score
+		roundNumber                   = state.RoundNumber
+		lastRoundLog                  = state.RoundsLog[roundNumber-1]
+		lastActionLog                 *truco.ActionLog
+		possibleActions               = _deserializeActions(state.PossibleActions)
+	)
+
+	if len(state.RoundsLog[roundNumber].ActionsLog) > 0 {
+		actionsLog := state.RoundsLog[roundNumber].ActionsLog
+		lastActionLog = &actionsLog[len(actionsLog)-1]
+	}
+
+	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
+		// Note that RoundNumber has already been incremented
+		// so we need to get the previous round's hands.
+		yourHand = *lastRoundLog.HandsDealt[you]
+		theirHand = *lastRoundLog.HandsDealt[them]
+	}
+
+	return renderState{
+		mode:            mode,
+		turnPlayerID:    turnPlayerID,
+		winnerPlayerID:  winnerPlayerID,
+		you:             you,
+		them:            them,
+		viewportWidth:   viewportWidth,
+		viewportHeight:  viewportHeight,
+		yourHand:        yourHand,
+		theirHand:       theirHand,
+		yourScore:       yourScore,
+		theirScore:      theirScore,
+		roundNumber:     roundNumber,
+		lastRoundLog:    lastRoundLog,
+		lastActionLog:   lastActionLog,
+		possibleActions: possibleActions,
+	}
+}
+
+func (u *ui) render(playerID int, state truco.GameState, mode renderMode) error {
+	if err := termbox.Clear(termbox.ColorWhite, termbox.ColorBlack); err != nil {
 		return err
 	}
 
-	var (
-		mx, my = termbox.Size()
-		you    = playerID
-		them   = state.OpponentOf(you)
-		hand   = *state.Players[them].Hand
-	)
+	rs := calculateRenderState(playerID, state, mode)
 
-	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
-		// Note that RoundNumber has already been incremented
-		// so we need to get the previous round's hands.
-		hand = *state.RoundsLog[state.RoundNumber-1].HandsDealt[them]
-	}
-
-	var (
-		unrevealed = strings.Repeat("[] ", len(hand.Unrevealed))
-		revealed   = getCardsString(hand.Revealed, false, false)
-	)
-
-	printAt(0, 0, unrevealed)
-	printAt(0, my/2-3, revealed)
-
-	printUpToAt(mx-1, 0, fmt.Sprintf("Mano número %d", state.RoundNumber))
-
-	youMano := ""
-	themMano := ""
-	if state.TurnPlayerID == you {
-		youMano = " (mano)"
-	} else {
-		themMano = " (mano)"
-	}
-
-	printUpToAt(mx-1, 1, fmt.Sprintf("Vos%v %v", youMano, spanishScore(state.Players[you].Score)))
-	printUpToAt(mx-1, 2, fmt.Sprintf("Elle%v %v", themMano, spanishScore(state.Players[them].Score)))
-
-	hand = *state.Players[you].Hand
-
-	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
-		// Note that RoundNumber has already been incremented
-		// so we need to get the previous round's hands.
-		hand = *state.RoundsLog[state.RoundNumber-1].HandsDealt[you]
-	}
-
-	unrevealed = getCardsString(hand.Unrevealed, false, false)
-	revealed = getCardsString(hand.Revealed, false, false)
-
-	printAt(0, my/2+3, revealed)
-	printAt(0, my-4, unrevealed)
-
-	switch mode {
-	case PRINT_MODE_NORMAL:
-		lastActionString, err := getLastActionString(you, state)
-		if err != nil {
-			return err
-		}
-
-		printAt(0, my/2, lastActionString)
-	case PRINT_MODE_SHOW_ROUND_RESULT:
-		lastRoundLog := state.RoundsLog[state.RoundNumber-1]
-		lastActionString, err := getActionString(lastRoundLog.ActionsLog[len(lastRoundLog.ActionsLog)-1], you)
-		if err != nil {
-			return err
-		}
-
-		printAt(0, my/2, lastActionString)
-
-		envidoPart := "el envido no se jugó"
-		if lastRoundLog.EnvidoWinnerPlayerID != -1 {
-			envidoWinner := "vos"
-			won := "ganaste"
-			if lastRoundLog.EnvidoWinnerPlayerID == them {
-				envidoWinner = "elle"
-				won = "ganó"
-			}
-			envidoPart = fmt.Sprintf("%v %v %v puntos por el envido", envidoWinner, won, lastRoundLog.EnvidoPoints)
-		}
-		trucoWinner := "vos"
-		won := "ganaste"
-		if lastRoundLog.TrucoWinnerPlayerID == them {
-			trucoWinner = "elle"
-			won = "ganó"
-		}
-
-		result := fmt.Sprintf(
-			"Terminó la mano, %v y %v %v %v puntos por el truco.",
-			envidoPart,
-			trucoWinner,
-			won,
-			lastRoundLog.TrucoPoints,
-		)
-		printAt(0, my/2+1, result)
-	case PRINT_MODE_END:
-		lastActionLog := state.RoundsLog[state.RoundNumber].ActionsLog[len(state.RoundsLog[state.RoundNumber].ActionsLog)-1]
-		lastActionString, err := getActionString(lastActionLog, you)
-		if err != nil {
-			return err
-		}
-
-		if playerID == state.WinnerPlayerID {
-			printAt(0, my/2, fmt.Sprintf("%v Ganaste 🥰!", lastActionString))
-		} else {
-			printAt(0, my/2, fmt.Sprintf("%v Perdiste 😭!", lastActionString))
-		}
-	}
-
-	if mode == PRINT_MODE_SHOW_ROUND_RESULT || mode == PRINT_MODE_END {
-		printAt(0, my-2, "Presioná cualquier tecla para continuar...")
-		termbox.Flush()
-		u.pressAnyKey()
-		return nil
-	}
-
-	if state.TurnPlayerID == playerID {
-		if mode == PRINT_MODE_NORMAL {
-			actionsString := ""
-			for i, action := range _deserializeActions(state.PossibleActions) {
-				action := spanishAction(action)
-				actionsString += fmt.Sprintf("%d. %s   ", i+1, action)
-			}
-			printAt(0, my-2, actionsString)
-		}
-	} else {
-		_, my := termbox.Size()
-		printAt(0, my-2, "Esperando al otro jugador...")
-	}
+	renderScores(rs)
+	renderTheirUnrevealedCards(rs)
+	renderTheirRevealedCards(rs)
+	renderLastAction(rs)
+	renderEndSummary(rs)
+	renderYourRevealedCards(rs)
+	renderYourUnrevealedCards(rs)
+	renderActions(rs)
 
 	termbox.Flush()
 	return nil
 }
 
-func printAt(x, y int, s string) {
+func renderScores(rs renderState) {
+	renderUpToAt(rs.viewportWidth-1, 0, fmt.Sprintf("Mano número %d", rs.roundNumber))
+
+	youMano := ""
+	themMano := ""
+	if rs.turnPlayerID == rs.you {
+		youMano = " (mano)"
+	} else {
+		themMano = " (mano)"
+	}
+
+	renderUpToAt(rs.viewportWidth-1, 1, fmt.Sprintf("Vos%v %v", youMano, spanishScore(rs.yourScore)))
+	renderUpToAt(rs.viewportWidth-1, 2, fmt.Sprintf("Elle%v %v", themMano, spanishScore(rs.theirScore)))
+}
+
+func renderTheirUnrevealedCards(rs renderState) {
+	renderAt(0, 0, strings.Repeat("[] ", len(rs.theirHand.Unrevealed)))
+}
+
+func renderTheirRevealedCards(rs renderState) {
+	renderAt(0, rs.viewportHeight/2-3, getCardsString(rs.theirHand.Revealed))
+}
+
+func renderLastAction(rs renderState) {
+	renderAt(0, rs.viewportHeight/2, getLastActionString(rs))
+}
+
+func renderEndSummary(rs renderState) {
+	var renderText string
+
+	switch rs.mode {
+	case PRINT_MODE_SHOW_ROUND_RESULT:
+		envidoPart := "el envido no se jugó"
+		if rs.lastRoundLog.EnvidoWinnerPlayerID != -1 {
+			envidoWinner := "vos"
+			won := "ganaste"
+			if rs.lastRoundLog.EnvidoWinnerPlayerID == rs.them {
+				envidoWinner = "elle"
+				won = "ganó"
+			}
+			envidoPart = fmt.Sprintf("%v %v %v puntos por el envido", envidoWinner, won, rs.lastRoundLog.EnvidoPoints)
+		}
+		trucoWinner := "vos"
+		won := "ganaste"
+		if rs.lastRoundLog.TrucoWinnerPlayerID == rs.them {
+			trucoWinner = "elle"
+			won = "ganó"
+		}
+
+		renderText = fmt.Sprintf(
+			"Terminó la mano, %v y %v %v %v puntos por el truco.",
+			envidoPart,
+			trucoWinner,
+			won,
+			rs.lastRoundLog.TrucoPoints,
+		)
+	case PRINT_MODE_END:
+		var resultText string
+		if rs.you == rs.winnerPlayerID {
+			resultText = "Ganaste 🥰"
+		} else {
+			resultText = "Perdiste 😭"
+		}
+		renderText = fmt.Sprintf("%v %v!", getLastActionString(rs), resultText)
+	}
+
+	renderAt(0, rs.viewportHeight/2, renderText)
+}
+
+func renderYourRevealedCards(rs renderState) {
+	renderAt(0, rs.viewportHeight/2+3, getCardsString(rs.yourHand.Revealed))
+}
+
+func renderYourUnrevealedCards(rs renderState) {
+	renderAt(0, rs.viewportHeight-4, getCardsString(rs.yourHand.Unrevealed))
+}
+
+func renderActions(rs renderState) {
+	var renderText string
+
+	switch rs.mode {
+	case PRINT_MODE_SHOW_ROUND_RESULT, PRINT_MODE_END:
+		renderText = "Presioná cualquier tecla para continuar..."
+	default:
+		if rs.turnPlayerID == rs.you {
+			actionsString := ""
+			for i, action := range rs.possibleActions {
+				action := spanishAction(action)
+				actionsString += fmt.Sprintf("%d. %s   ", i+1, action)
+			}
+			renderText = actionsString
+		} else {
+			renderText = "Esperando al otro jugador..."
+		}
+
+	}
+
+	renderAt(0, rs.viewportHeight-2, renderText)
+}
+
+func renderAt(x, y int, s string) {
 	_s := []rune(s)
 	for i, r := range _s {
 		termbox.SetCell(x+i, y, r, termbox.ColorDefault, termbox.ColorDefault)
@@ -209,24 +233,17 @@ func printAt(x, y int, s string) {
 }
 
 // Write so that the output ends at x, y
-func printUpToAt(x, y int, s string) {
+func renderUpToAt(x, y int, s string) {
 	_s := []rune(s)
 	for i, r := range _s {
 		termbox.SetCell(x-len(_s)+i, y, r, termbox.ColorDefault, termbox.ColorDefault)
 	}
 }
 
-func getCardsString(cards []truco.Card, withNumbers bool, withBack bool) string {
+func getCardsString(cards []truco.Card) string {
 	var cs []string
-	for i, card := range cards {
-		if withNumbers {
-			cs = append(cs, fmt.Sprintf("%v. %v", i+1, getCardString(card)))
-		} else {
-			cs = append(cs, getCardString(card))
-		}
-	}
-	if withBack {
-		cs = append(cs, "0. Volver")
+	for _, card := range cards {
+		cs = append(cs, getCardString(card))
 	}
 	return strings.Join(cs, "  ")
 }
@@ -247,169 +264,6 @@ func suitEmoji(suit string) string {
 		return "🍷"
 	default:
 		return "❓"
-	}
-}
-
-func getLastActionString(playerID int, state truco.GameState) (string, error) {
-	actionsLog := state.RoundsLog[state.RoundNumber].ActionsLog
-
-	if len(actionsLog) == 0 {
-		if state.RoundNumber == 1 {
-			return "¡Empezó el juego!", nil
-		}
-		return "¡Empezó la mano!", nil
-	}
-
-	lastActionLog := actionsLog[len(actionsLog)-1]
-	return getActionString(lastActionLog, playerID)
-}
-
-func getActionString(log truco.ActionLog, playerID int) (string, error) {
-	lastAction, err := truco.DeserializeAction(log.Action)
-	if err != nil {
-		return "", err
-	}
-
-	said := "dijiste"
-	revealed := "tiraste"
-	who := "Vos"
-	if playerID != log.PlayerID {
-		who = "Elle"
-		said = "dijo"
-		revealed = "tiró"
-	}
-
-	var what string
-	switch lastAction.GetName() {
-	case truco.REVEAL_CARD:
-		action := lastAction.(*truco.ActionRevealCard)
-		what = fmt.Sprintf("%v la carta %v", revealed, getCardString(action.Card))
-	case truco.SAY_ENVIDO:
-		what = fmt.Sprintf("%v envido", said)
-	case truco.SAY_REAL_ENVIDO:
-		what = fmt.Sprintf("%v real envido", said)
-	case truco.SAY_FALTA_ENVIDO:
-		what = fmt.Sprintf("%v falta envido!", said)
-	case truco.SAY_ENVIDO_QUIERO:
-		action := lastAction.(*truco.ActionSayEnvidoQuiero)
-		what = fmt.Sprintf("%v quiero con %d", said, action.Score)
-	case truco.SAY_ENVIDO_NO_QUIERO:
-		what = fmt.Sprintf("%v no quiero", said)
-	case truco.SAY_TRUCO:
-		what = fmt.Sprintf("%v truco", said)
-	case truco.SAY_TRUCO_QUIERO:
-		what = fmt.Sprintf("%v quiero", said)
-	case truco.SAY_TRUCO_NO_QUIERO:
-		what = fmt.Sprintf("%v no quiero", said)
-	case truco.SAY_QUIERO_RETRUCO:
-		what = fmt.Sprintf("%v quiero retruco", said)
-	case truco.SAY_QUIERO_VALE_CUATRO:
-		what = fmt.Sprintf("%v quiero vale cuatro", said)
-	case truco.SAY_SON_BUENAS:
-		what = fmt.Sprintf("%v son buenas", said)
-	case truco.SAY_SON_MEJORES:
-		action := lastAction.(*truco.ActionSaySonMejores)
-		what = fmt.Sprintf("%v %d son mejores", said, action.Score)
-	case truco.SAY_ME_VOY_AL_MAZO:
-		what = fmt.Sprintf("%v me voy al mazo", said)
-	default:
-		what = "???"
-	}
-
-	return fmt.Sprintf("%v %v\n", who, what), nil
-}
-
-func (u *ui) startKeyEventLoop() {
-	keyPressesCh := make(chan termbox.Event)
-	go func() {
-		for {
-			event := termbox.PollEvent()
-			if event.Type != termbox.EventKey {
-				continue
-			}
-			if event.Key == termbox.KeyEsc || event.Key == termbox.KeyCtrlC || event.Key == termbox.KeyCtrlD || event.Key == termbox.KeyCtrlZ || event.Ch == 'q' {
-				termbox.Close()
-				log.Println("Chau!")
-				os.Exit(0)
-			}
-			keyPressesCh <- event
-		}
-	}()
-
-	go func() {
-		for {
-			select {
-			case <-keyPressesCh:
-			case <-u.wantKeyPressCh:
-				event := <-keyPressesCh
-				u.sendKeyPressCh <- event.Ch
-			}
-		}
-	}()
-}
-
-func (u *ui) pressAnyKey() {
-	u.wantKeyPressCh <- struct{}{}
-	<-u.sendKeyPressCh
-}
-
-func (u *ui) pressAnyNumber() int {
-	u.wantKeyPressCh <- struct{}{}
-	r := <-u.sendKeyPressCh
-	num, err := strconv.Atoi(string(r))
-	if err != nil {
-		return u.pressAnyNumber()
-	}
-	return num
-}
-
-func spanishScore(score int) string {
-	if score == 1 {
-		return "1 mala"
-	}
-	if score < 15 {
-		return fmt.Sprintf("%d malas", score)
-	}
-	if score == 15 {
-		return "entraste"
-	}
-	return fmt.Sprintf("%d buenas", score-14)
-}
-
-func spanishAction(action truco.Action) string {
-	switch action.GetName() {
-	case truco.REVEAL_CARD:
-		_action := action.(*truco.ActionRevealCard)
-		return getCardString(_action.Card)
-	case truco.SAY_ENVIDO:
-		return "envido"
-	case truco.SAY_REAL_ENVIDO:
-		return "real envido"
-	case truco.SAY_FALTA_ENVIDO:
-		return "falta envido"
-	case truco.SAY_ENVIDO_QUIERO:
-		return "quiero"
-	case truco.SAY_ENVIDO_NO_QUIERO:
-		return "no quiero"
-	case truco.SAY_TRUCO:
-		return "truco"
-	case truco.SAY_TRUCO_QUIERO:
-		return "quiero"
-	case truco.SAY_TRUCO_NO_QUIERO:
-		return "no quiero"
-	case truco.SAY_QUIERO_RETRUCO:
-		return "quiero retruco"
-	case truco.SAY_QUIERO_VALE_CUATRO:
-		return "quiero vale cuatro"
-	case truco.SAY_SON_BUENAS:
-		return "son buenas"
-	case truco.SAY_SON_MEJORES:
-		_action := action.(*truco.ActionSaySonMejores)
-		return fmt.Sprintf("%v son mejores", _action.Score)
-	case truco.SAY_ME_VOY_AL_MAZO:
-		return "me voy al mazo"
-	default:
-		return "???"
 	}
 }
 
