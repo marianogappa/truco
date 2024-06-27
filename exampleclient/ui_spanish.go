@@ -7,14 +7,14 @@ import (
 )
 
 func getLastActionString(rs renderState) string {
-	if rs.lastActionLog == nil {
-		if rs.roundNumber == 1 {
+	if rs.gs.LastActionLog == nil {
+		if rs.gs.RoundNumber == 1 {
 			return "¡Empezó el juego!"
 		}
 		return "¡Empezó la mano!"
 	}
 
-	return getActionString(*rs.lastActionLog, rs.you)
+	return getActionString(*rs.gs.LastActionLog, rs.gs.YouPlayerID)
 }
 
 func getActionString(log truco.ActionLog, playerID int) string {

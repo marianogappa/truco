@@ -41,76 +41,42 @@ const (
 
 type renderState struct {
 	mode            renderMode
-	turnPlayerID    int
-	winnerPlayerID  int
-	you             int
-	them            int
 	viewportWidth   int
 	viewportHeight  int
-	yourHand        truco.Hand
-	theirHand       truco.Hand
-	yourScore       int
-	theirScore      int
-	roundNumber     int
-	lastRoundLog    *truco.RoundLog
-	lastActionLog   *truco.ActionLog
+	gs              truco.ClientGameState
 	possibleActions []truco.Action
 }
 
-func calculateRenderState(playerID int, state truco.GameState, mode renderMode) renderState {
+func calculateRenderState(state truco.ClientGameState, mode renderMode) renderState {
 	var (
-		you                           = playerID
-		turnPlayerID                  = state.TurnPlayerID
-		winnerPlayerID                = state.WinnerPlayerID
-		them                          = state.OpponentOf(you)
 		viewportWidth, viewportHeight = termbox.Size()
-		yourHand                      = *state.Players[you].Hand
-		theirHand                     = *state.Players[them].Hand
-		yourScore                     = state.Players[you].Score
-		theirScore                    = state.Players[them].Score
-		roundNumber                   = state.RoundNumber
-		lastRoundLog                  = state.RoundsLog[roundNumber-1]
-		lastActionLog                 *truco.ActionLog
 		possibleActions               = _deserializeActions(state.PossibleActions)
+		gs                            = state
 	)
-
-	if len(state.RoundsLog[roundNumber].ActionsLog) > 0 {
-		actionsLog := state.RoundsLog[roundNumber].ActionsLog
-		lastActionLog = &actionsLog[len(actionsLog)-1]
-	}
 
 	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
 		// Note that RoundNumber has already been incremented
 		// so we need to get the previous round's hands.
-		yourHand = *lastRoundLog.HandsDealt[you]
-		theirHand = *lastRoundLog.HandsDealt[them]
+		gs.YourRevealedCards = gs.LastRoundLog.HandsDealt[gs.YouPlayerID].Revealed
+		gs.YourUnrevealedCards = gs.LastRoundLog.HandsDealt[gs.YouPlayerID].Unrevealed
+		gs.TheirRevealedCards = gs.LastRoundLog.HandsDealt[gs.ThemPlayerID].Revealed
 	}
 
 	return renderState{
 		mode:            mode,
-		turnPlayerID:    turnPlayerID,
-		winnerPlayerID:  winnerPlayerID,
-		you:             you,
-		them:            them,
+		gs:              gs,
+		possibleActions: possibleActions,
 		viewportWidth:   viewportWidth,
 		viewportHeight:  viewportHeight,
-		yourHand:        yourHand,
-		theirHand:       theirHand,
-		yourScore:       yourScore,
-		theirScore:      theirScore,
-		roundNumber:     roundNumber,
-		lastRoundLog:    lastRoundLog,
-		lastActionLog:   lastActionLog,
-		possibleActions: possibleActions,
 	}
 }
 
-func (u *ui) render(playerID int, state truco.GameState, mode renderMode) error {
+func (u *ui) render(state truco.ClientGameState, mode renderMode) error {
 	if err := termbox.Clear(termbox.ColorWhite, termbox.ColorBlack); err != nil {
 		return err
 	}
 
-	rs := calculateRenderState(playerID, state, mode)
+	rs := calculateRenderState(state, mode)
 
 	renderScores(rs)
 	renderTheirUnrevealedCards(rs)
@@ -126,26 +92,26 @@ func (u *ui) render(playerID int, state truco.GameState, mode renderMode) error 
 }
 
 func renderScores(rs renderState) {
-	renderUpToAt(rs.viewportWidth-1, 0, fmt.Sprintf("Mano número %d", rs.roundNumber))
+	renderUpToAt(rs.viewportWidth-1, 0, fmt.Sprintf("Mano número %d", rs.gs.RoundNumber))
 
 	youMano := ""
 	themMano := ""
-	if rs.turnPlayerID == rs.you {
+	if rs.gs.TurnPlayerID == rs.gs.YouPlayerID {
 		youMano = " (mano)"
 	} else {
 		themMano = " (mano)"
 	}
 
-	renderUpToAt(rs.viewportWidth-1, 1, fmt.Sprintf("Vos%v %v", youMano, spanishScore(rs.yourScore)))
-	renderUpToAt(rs.viewportWidth-1, 2, fmt.Sprintf("Elle%v %v", themMano, spanishScore(rs.theirScore)))
+	renderUpToAt(rs.viewportWidth-1, 1, fmt.Sprintf("Vos%v %v", youMano, spanishScore(rs.gs.YourScore)))
+	renderUpToAt(rs.viewportWidth-1, 2, fmt.Sprintf("Elle%v %v", themMano, spanishScore(rs.gs.TheirScore)))
 }
 
 func renderTheirUnrevealedCards(rs renderState) {
-	renderAt(0, 0, strings.Repeat("[] ", len(rs.theirHand.Unrevealed)))
+	renderAt(0, 0, strings.Repeat("[] ", rs.gs.TheirUnrevealedCardLength))
 }
 
 func renderTheirRevealedCards(rs renderState) {
-	renderAt(0, rs.viewportHeight/2-3, getCardsString(rs.theirHand.Revealed))
+	renderAt(0, rs.viewportHeight/2-3, getCardsString(rs.gs.TheirRevealedCards))
 }
 
 func renderLastAction(rs renderState) {
@@ -158,18 +124,18 @@ func renderEndSummary(rs renderState) {
 	switch rs.mode {
 	case PRINT_MODE_SHOW_ROUND_RESULT:
 		envidoPart := "el envido no se jugó"
-		if rs.lastRoundLog.EnvidoWinnerPlayerID != -1 {
+		if rs.gs.LastRoundLog.EnvidoWinnerPlayerID != -1 {
 			envidoWinner := "vos"
 			won := "ganaste"
-			if rs.lastRoundLog.EnvidoWinnerPlayerID == rs.them {
+			if rs.gs.LastRoundLog.EnvidoWinnerPlayerID == rs.gs.ThemPlayerID {
 				envidoWinner = "elle"
 				won = "ganó"
 			}
-			envidoPart = fmt.Sprintf("%v %v %v puntos por el envido", envidoWinner, won, rs.lastRoundLog.EnvidoPoints)
+			envidoPart = fmt.Sprintf("%v %v %v puntos por el envido", envidoWinner, won, rs.gs.LastRoundLog.EnvidoPoints)
 		}
 		trucoWinner := "vos"
 		won := "ganaste"
-		if rs.lastRoundLog.TrucoWinnerPlayerID == rs.them {
+		if rs.gs.LastRoundLog.TrucoWinnerPlayerID == rs.gs.ThemPlayerID {
 			trucoWinner = "elle"
 			won = "ganó"
 		}
@@ -179,11 +145,11 @@ func renderEndSummary(rs renderState) {
 			envidoPart,
 			trucoWinner,
 			won,
-			rs.lastRoundLog.TrucoPoints,
+			rs.gs.LastRoundLog.TrucoPoints,
 		)
 	case PRINT_MODE_END:
 		var resultText string
-		if rs.you == rs.winnerPlayerID {
+		if rs.gs.YouPlayerID == rs.gs.WinnerPlayerID {
 			resultText = "Ganaste 🥰"
 		} else {
 			resultText = "Perdiste 😭"
@@ -195,11 +161,11 @@ func renderEndSummary(rs renderState) {
 }
 
 func renderYourRevealedCards(rs renderState) {
-	renderAt(0, rs.viewportHeight/2+3, getCardsString(rs.yourHand.Revealed))
+	renderAt(0, rs.viewportHeight/2+3, getCardsString(rs.gs.YourRevealedCards))
 }
 
 func renderYourUnrevealedCards(rs renderState) {
-	renderAt(0, rs.viewportHeight-4, getCardsString(rs.yourHand.Unrevealed))
+	renderAt(0, rs.viewportHeight-4, getCardsString(rs.gs.YourUnrevealedCards))
 }
 
 func renderActions(rs renderState) {
@@ -209,7 +175,7 @@ func renderActions(rs renderState) {
 	case PRINT_MODE_SHOW_ROUND_RESULT, PRINT_MODE_END:
 		renderText = "Presioná cualquier tecla para continuar..."
 	default:
-		if rs.turnPlayerID == rs.you {
+		if rs.gs.TurnPlayerID == rs.gs.YouPlayerID {
 			actionsString := ""
 			for i, action := range rs.possibleActions {
 				action := spanishAction(action)

@@ -58,7 +58,7 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	s.players[*playerID] = conn
 
-	msg, _ := NewMessageHeresGameState(*s.gameState)
+	msg, _ := NewMessageHeresGameState(s.gameState.ToClientGameState(*playerID))
 	if err := WsSend(conn, msg); err != nil {
 		log.Println(err)
 		return
@@ -97,9 +97,9 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 			log.Println("Ran action message:", string(message))
 
-			msg, _ := NewMessageHeresGameState(*s.gameState)
 			for i, playerConn := range s.players {
 				log.Println("Sending game state to player", i)
+				msg, _ := NewMessageHeresGameState(s.gameState.ToClientGameState(i))
 				if err := WsSend(playerConn, msg); err != nil {
 					log.Println(err)
 					return
@@ -108,7 +108,7 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		case MessageTypeGimmeGameState:
 			log.Println("Got state request message:", string(message))
 
-			msg, _ := NewMessageHeresGameState(*s.gameState)
+			msg, _ := NewMessageHeresGameState(s.gameState.ToClientGameState(*playerID))
 			if err := WsSend(conn, msg); err != nil {
 				log.Println(err)
 				return

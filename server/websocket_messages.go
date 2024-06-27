@@ -41,18 +41,18 @@ func (m MessageHello) Deserialize() (int, error) {
 
 type MessageHeresGameState struct {
 	WebsocketMessage
-	GameState json.RawMessage `json:"playerID"`
+	GameState json.RawMessage `json:"gameState"`
 }
 
-func NewMessageHeresGameState(gameState truco.GameState) (MessageHeresGameState, error) {
+func NewMessageHeresGameState(gameState truco.ClientGameState) (MessageHeresGameState, error) {
 	bs, err := json.Marshal(gameState)
 	return MessageHeresGameState{WebsocketMessage: WebsocketMessage{Type: MessageTypeHeresGameState}, GameState: bs}, err
 }
 
-func (gs MessageHeresGameState) Deserialize() (truco.GameState, error) {
-	var gameState truco.GameState
-	err := json.Unmarshal(gs.GameState, &gameState)
-	return gameState, err
+func (gs MessageHeresGameState) Deserialize() (truco.ClientGameState, error) {
+	var clientGameState truco.ClientGameState
+	err := json.Unmarshal(gs.GameState, &clientGameState)
+	return clientGameState, err
 }
 
 type MessageGimmeGameState struct {

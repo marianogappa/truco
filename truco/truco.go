@@ -6,10 +6,9 @@ import (
 	"fmt"
 )
 
-// GameState represents the state of a Truco game.
+// GameState represents the state of a Truco game. It is the central struct to this package.
 //
-// It is returned by the server on every single call, so if you want to implement a client,
-// you need to be very familiar with this struct.
+// If you want to implement a client, you should look at ClientGameState instead.
 type GameState struct {
 	// RoundTurnPlayerID is the player ID of the player who starts the round, or "mano".
 	RoundTurnPlayerID int `json:"roundTurnPlayerID"`
@@ -71,12 +70,6 @@ type GameState struct {
 	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsEnded` is
 	// `true`. Otherwise, it's -1.
 	WinnerPlayerID int `json:"winnerPlayerID"`
-
-	// TrucoQuieroOwnerPlayerId is the player ID of the player who said "quiero" last in the truco
-	// sequence. This is used to determine who can raise the stakes in the truco sequence.
-	//
-	// TODO: this should probably be inside TrucoSequence?
-	// TrucoQuieroOwnerPlayerId int `json:"trucoQuieroOwnerPlayerId"`
 
 	// RoundsLog is the ordered list of logs of each round that was played in the game.
 	//
@@ -357,4 +350,85 @@ func _serializeActions(as []Action) []json.RawMessage {
 		_as = append(_as, json.RawMessage(SerializeAction(a)))
 	}
 	return _as
+}
+
+func (g *GameState) ToClientGameState(youPlayerID int) ClientGameState {
+	themPlayerID := g.OpponentOf(youPlayerID)
+
+	cgs := ClientGameState{
+		RoundTurnPlayerID:         g.RoundTurnPlayerID,
+		RoundNumber:               g.RoundNumber,
+		TurnPlayerID:              g.TurnPlayerID,
+		YouPlayerID:               youPlayerID,
+		ThemPlayerID:              themPlayerID,
+		YourScore:                 g.Players[youPlayerID].Score,
+		TheirScore:                g.Players[themPlayerID].Score,
+		YourRevealedCards:         g.Players[youPlayerID].Hand.Revealed,
+		TheirRevealedCards:        g.Players[themPlayerID].Hand.Revealed,
+		YourUnrevealedCards:       g.Players[youPlayerID].Hand.Unrevealed,
+		TheirUnrevealedCardLength: len(g.Players[themPlayerID].Hand.Unrevealed),
+		PossibleActions:           g.PossibleActions,
+		IsGameEnded:               g.IsGameEnded,
+		WinnerPlayerID:            g.WinnerPlayerID,
+		LastRoundLog:              *g.RoundsLog[g.RoundNumber-1], // TODO elide their unrevealed cards
+	}
+
+	if len(g.RoundsLog[g.RoundNumber].ActionsLog) > 0 {
+		actionsLog := g.RoundsLog[g.RoundNumber].ActionsLog
+		cgs.LastActionLog = &actionsLog[len(actionsLog)-1]
+	}
+
+	return cgs
+}
+
+// ClientGameState represents the state of a Truco game as available to a client.
+//
+// It is returned by the server on every single call, so if you want to implement a client,
+// you need to be very familiar with this struct.
+type ClientGameState struct {
+	// RoundTurnPlayerID is the player ID of the player who starts the round, or "mano".
+	RoundTurnPlayerID int `json:"roundTurnPlayerID"`
+
+	// RoundNumber is the number of the current round, starting from 1.
+	RoundNumber int `json:"roundNumber"`
+
+	// TurnPlayerID is the player ID of the player whose turn it is to play an action.
+	// This is different from RoundTurnPlayerID, which is the player who starts the round.
+	// They are the same at the beginning of the round.
+	TurnPlayerID int `json:"turnPlayerID"`
+
+	YouPlayerID               int    `json:"you"`
+	ThemPlayerID              int    `json:"them"`
+	YourScore                 int    `json:"yourScore"`
+	TheirScore                int    `json:"theirScore"`
+	YourRevealedCards         []Card `json:"yourRevealedCards"`
+	TheirRevealedCards        []Card `json:"theirRevealedCards"`
+	YourUnrevealedCards       []Card `json:"yourUnrevealedCards"`
+	TheirUnrevealedCardLength int    `json:"theirUnrevealedCardLength"`
+
+	// PossibleActions is a list of possible actions that the current player can take.
+	// Possible actions are calculated based on game state at the beginning of the round and after
+	// each action is run (i.e. GameState.RunAction).
+	PossibleActions []json.RawMessage `json:"possibleActions"`
+
+	// IsGameEnded is true if the whole game is ended, rather than an individual round. This happens when
+	// a player reaches 30 points.
+	IsGameEnded bool `json:"isGameEnded"`
+
+	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsEnded` is
+	// `true`. Otherwise, it's -1.
+	WinnerPlayerID int `json:"winnerPlayerID"`
+
+	// LastRoundLog is the log of the last round that was played. Clients need this in order to render
+	// the cards of the last round, because upon an action that ends a round, the game state is updated
+	// to the next round, and the cards are no longer available.
+	//
+	// The rendering of the end of the round might also want to show how the points were won, so this
+	// is available as well.
+	LastRoundLog RoundLog `json:"lastRoundLog"`
+
+	// LastActionLog is the log of the last action that was run in the current round. If the round has
+	// just started, this will be nil. Clients typically want to user this to show the current player
+	// what the opponent just did.
+	LastActionLog *ActionLog `json:"lastActionLog"`
 }
