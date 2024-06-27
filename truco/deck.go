@@ -110,6 +110,10 @@ func newDeck() *deck {
 	return &d
 }
 
+func (d *deck) shuffle() {
+	d.cards = makeSpanishCards()
+}
+
 func (d *deck) dealHand() *Hand {
 	return d.dealHandFunc()
 }

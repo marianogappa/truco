@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/marianogappa/truco/truco"
 	"github.com/nsf/termbox-go"
@@ -88,6 +89,9 @@ func (u *ui) render(state truco.ClientGameState, mode renderMode) error {
 	renderActions(rs)
 
 	termbox.Flush()
+	// This is an artificial delay to make the game more human-like.
+	time.Sleep(1 * time.Second)
+
 	return nil
 }
 

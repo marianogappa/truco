@@ -151,6 +151,7 @@ func New(opts ...func(*GameState)) *GameState {
 }
 
 func (g *GameState) startNewRound() {
+	g.deck.shuffle()
 	g.RoundTurnPlayerID = g.OpponentOf(g.RoundTurnPlayerID)
 	g.RoundNumber++
 	g.TurnPlayerID = g.RoundTurnPlayerID
