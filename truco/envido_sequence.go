@@ -79,7 +79,7 @@ var (
 type EnvidoSequence struct {
 	Sequence []string `json:"sequence"`
 
-	// This is necessary because when son_buenas/son_mejores is said,
+	// This is necessary because when son_buenas/son_mejores/no_quiero is said,
 	// the turn goes to whoever started the envido sequence (i.e. affects YieldsTurn)
 	StartingPlayerID int `json:"startingPlayerID"`
 }
