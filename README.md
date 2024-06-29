@@ -31,11 +31,11 @@ $ PORT=1234 truco server
 If you want to play via example terminal-based frontend, start two clients on separate terminals
 
 ```bash
-$ truco player1
+$ truco player 1
 ```
 
 ```bash
-$ truco player2
+$ truco player 2
 ```
 
 ### Playing with someone else over the Internet
@@ -59,11 +59,11 @@ Then, the clients can connect to the address the tunnel provides, e.g. if tunnel
 Start the clients with
 
 ```bash
-$ truco player1 retail-curves-bernard-affairs.trycloudflare.com
+$ truco player 1 retail-curves-bernard-affairs.trycloudflare.com
 ```
 
 ```bash
-$ truco player2 retail-curves-bernard-affairs.trycloudflare.com
+$ truco player 2 retail-curves-bernard-affairs.trycloudflare.com
 ```
 
 ### Project status
