@@ -26,7 +26,7 @@ func TestTrucoSequence(t *testing.T) {
 			name: "cannot start with truco_quiero",
 			steps: []testStep{
 				{
-					action:          newActionSayTrucoQuiero(),
+					action:          NewActionSayTrucoQuiero(0),
 					expectedIsValid: false,
 				},
 			},
@@ -35,7 +35,7 @@ func TestTrucoSequence(t *testing.T) {
 			name: "cannot start with truco_no_quiero",
 			steps: []testStep{
 				{
-					action:          newActionSayTrucoNoQuiero(),
+					action:          NewActionSayTrucoNoQuiero(0),
 					expectedIsValid: false,
 				},
 			},
@@ -44,7 +44,7 @@ func TestTrucoSequence(t *testing.T) {
 			name: "cannot start with quiero retruco",
 			steps: []testStep{
 				{
-					action:          newActionSayQuieroRetruco(),
+					action:          NewActionSayQuieroRetruco(0),
 					expectedIsValid: false,
 				},
 			},
@@ -53,7 +53,7 @@ func TestTrucoSequence(t *testing.T) {
 			name: "cannot start with quiero vale cuatro",
 			steps: []testStep{
 				{
-					action:          newActionSayQuieroValeCuatro(),
+					action:          NewActionSayQuieroValeCuatro(0),
 					expectedIsValid: false,
 				},
 			},
@@ -62,12 +62,12 @@ func TestTrucoSequence(t *testing.T) {
 			name: "truco_quiero is valid after truco",
 			steps: []testStep{
 				{
-					action:                         newActionSayTruco(),
+					action:                         NewActionSayTruco(0),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 1,
 				},
 				{
-					action:                         newActionSayTrucoQuiero(),
+					action:                         NewActionSayTrucoQuiero(1),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 0,
 					expectedIsFinishedAfterRunning: true,

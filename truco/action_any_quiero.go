@@ -9,6 +9,9 @@ type ActionSayTrucoQuiero struct{ act }
 type ActionSayTrucoNoQuiero struct{ act }
 
 func (a ActionSayEnvidoNoQuiero) IsPossible(g GameState) bool {
+	if g.IsRoundFinished {
+		return false
+	}
 	if g.IsEnvidoFinished {
 		return false
 	}
@@ -16,6 +19,9 @@ func (a ActionSayEnvidoNoQuiero) IsPossible(g GameState) bool {
 }
 
 func (a ActionSayEnvidoQuiero) IsPossible(g GameState) bool {
+	if g.IsRoundFinished {
+		return false
+	}
 	if g.IsEnvidoFinished {
 		return false
 	}
@@ -23,6 +29,9 @@ func (a ActionSayEnvidoQuiero) IsPossible(g GameState) bool {
 }
 
 func (a ActionSayTrucoQuiero) IsPossible(g GameState) bool {
+	if g.IsRoundFinished {
+		return false
+	}
 	// Edge case: Truco -> Envido -> ???
 	// In this case, until envido is resolved, truco cannot continue
 	actionEnvidoQuiero := ActionSayEnvidoQuiero{act: act{Name: SAY_ENVIDO_QUIERO}}
@@ -36,6 +45,9 @@ func (a ActionSayTrucoQuiero) IsPossible(g GameState) bool {
 }
 
 func (a ActionSayTrucoNoQuiero) IsPossible(g GameState) bool {
+	if g.IsRoundFinished {
+		return false
+	}
 	// Edge case: Truco -> Envido -> ???
 	// In this case, until envido is resolved, truco cannot continue
 	actionEnvidoQuiero := ActionSayEnvidoQuiero{act: act{Name: SAY_ENVIDO_QUIERO}}

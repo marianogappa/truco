@@ -6,6 +6,9 @@ type ActionSaySonBuenas struct {
 }
 
 func (a ActionSaySonBuenas) IsPossible(g GameState) bool {
+	if g.IsRoundFinished {
+		return false
+	}
 	if g.IsEnvidoFinished {
 		return false
 	}

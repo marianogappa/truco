@@ -91,6 +91,9 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				log.Println(err)
 				return
 			}
+			if (*action).GetPlayerID() != *playerID {
+				log.Fatal("Player", *playerID, " tried to run action for player", (*action).GetPlayerID())
+			}
 			err = s.gameState.RunAction(*action)
 			if err != nil {
 				// TODO write back to the connection

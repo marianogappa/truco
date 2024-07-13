@@ -10,14 +10,14 @@ func TestInitialOptions(t *testing.T) {
 	gameState := New()
 
 	expectedActions := []Action{
-		newActionRevealCard(gameState.Players[gameState.TurnPlayerID].Hand.Unrevealed[0]),
-		newActionRevealCard(gameState.Players[gameState.TurnPlayerID].Hand.Unrevealed[1]),
-		newActionRevealCard(gameState.Players[gameState.TurnPlayerID].Hand.Unrevealed[2]),
-		newActionSayEnvido(),
-		newActionSayRealEnvido(),
-		newActionSayFaltaEnvido(),
-		newActionSayTruco(),
-		newActionSayMeVoyAlMazo(),
+		NewActionRevealCard(gameState.Players[gameState.TurnPlayerID].Hand.Unrevealed[0], 0),
+		NewActionRevealCard(gameState.Players[gameState.TurnPlayerID].Hand.Unrevealed[1], 0),
+		NewActionRevealCard(gameState.Players[gameState.TurnPlayerID].Hand.Unrevealed[2], 0),
+		NewActionSayEnvido(0),
+		NewActionSayRealEnvido(0),
+		NewActionSayFaltaEnvido(0),
+		NewActionSayTruco(0),
+		NewActionSayMeVoyAlMazo(0),
 	}
 
 	require.Equal(
@@ -31,12 +31,12 @@ func TestAfterRealEnvidoOptions(t *testing.T) {
 	gameState := New()
 
 	expectedActions := []Action{
-		newActionSayFaltaEnvido(),
-		newActionSayEnvidoQuiero(gameState.Players[gameState.TurnOpponentPlayerID].Hand.EnvidoScore()),
-		newActionSayEnvidoNoQuiero(),
+		NewActionSayFaltaEnvido(1),
+		NewActionSayEnvidoQuiero(gameState.Players[gameState.TurnOpponentPlayerID].Hand.EnvidoScore(), 1),
+		NewActionSayEnvidoNoQuiero(1),
 	}
 
-	err := gameState.RunAction(newActionSayRealEnvido())
+	err := gameState.RunAction(NewActionSayRealEnvido(0))
 	if err != nil {
 		t.Fatal(err)
 	}

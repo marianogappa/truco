@@ -5,6 +5,9 @@ type ActionSayMeVoyAlMazo struct {
 }
 
 func (a ActionSayMeVoyAlMazo) IsPossible(g GameState) bool {
+	if g.IsRoundFinished {
+		return false
+	}
 	if !g.EnvidoSequence.IsEmpty() && !g.IsEnvidoFinished && !g.EnvidoSequence.IsFinished() {
 		return false
 	}

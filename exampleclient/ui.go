@@ -14,16 +14,12 @@ import (
 )
 
 type ui struct {
-	wantKeyPressCh chan struct{}
-	sendKeyPressCh chan rune
+	keyCh chan rune
 }
 
 func NewUI() *ui {
-	ui := &ui{
-		wantKeyPressCh: make(chan struct{}),
-		sendKeyPressCh: make(chan rune),
-	}
-	ui.startKeyEventLoop()
+	ui := &ui{}
+	ui.keyCh = ui.startKeyEventLoop()
 	err := termbox.Init()
 	if err != nil {
 		panic(err)
@@ -51,19 +47,18 @@ type renderState struct {
 	possibleActions []truco.Action
 }
 
-func calculateRenderState(state truco.ClientGameState, mode renderMode) renderState {
+func calculateRenderState(state truco.ClientGameState) renderState {
 	var (
 		viewportWidth, viewportHeight = termbox.Size()
 		possibleActions               = _deserializeActions(state.PossibleActions)
 		gs                            = state
+		mode                          = PRINT_MODE_NORMAL
 	)
-
-	if mode == PRINT_MODE_SHOW_ROUND_RESULT {
-		// Note that RoundNumber has already been incremented
-		// so we need to get the previous round's hands.
-		gs.YourRevealedCards = gs.LastRoundLog.HandsDealt[gs.YouPlayerID].Revealed
-		gs.YourUnrevealedCards = gs.LastRoundLog.HandsDealt[gs.YouPlayerID].Unrevealed
-		gs.TheirRevealedCards = gs.LastRoundLog.HandsDealt[gs.ThemPlayerID].Revealed
+	if state.IsRoundFinished {
+		mode = PRINT_MODE_SHOW_ROUND_RESULT
+	}
+	if state.IsGameEnded {
+		mode = PRINT_MODE_END
 	}
 
 	return renderState{
@@ -75,12 +70,12 @@ func calculateRenderState(state truco.ClientGameState, mode renderMode) renderSt
 	}
 }
 
-func (u *ui) render(state truco.ClientGameState, mode renderMode) error {
+func (u *ui) render(state truco.ClientGameState) error {
 	if err := termbox.Clear(termbox.ColorWhite, termbox.ColorBlack); err != nil {
 		return err
 	}
 
-	rs := calculateRenderState(state, mode)
+	rs := calculateRenderState(state)
 
 	renderScores(rs)
 	renderTheirUnrevealedCards(rs)
@@ -178,21 +173,19 @@ func renderYourUnrevealedCards(rs renderState) {
 func renderActions(rs renderState) {
 	var renderText string
 
-	switch rs.mode {
-	case PRINT_MODE_SHOW_ROUND_RESULT, PRINT_MODE_END:
-		renderText = "Presioná cualquier tecla para continuar..."
-	default:
-		if rs.gs.TurnPlayerID == rs.gs.YouPlayerID {
-			actionsString := ""
-			for i, action := range rs.possibleActions {
-				action := spanishAction(action)
-				actionsString += fmt.Sprintf("%d. %s   ", i+1, action)
-			}
-			renderText = actionsString
-		} else {
-			renderText = "Esperando al otro jugador..."
-		}
+	actionsString := ""
+	for i, action := range rs.possibleActions {
+		action := spanishAction(action)
+		actionsString += fmt.Sprintf("%d. %s   ", i+1, action)
+	}
+	renderText = actionsString
 
+	if len(rs.possibleActions) == 0 {
+		renderText = "Esperando al otro jugador..."
+	}
+
+	if rs.mode == PRINT_MODE_END {
+		renderText = "Presioná cualquier tecla para continuar..."
 	}
 
 	renderAt(0, rs.viewportHeight-2, renderText)

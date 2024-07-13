@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 )
 
 // GameState represents the state of a Truco game. It is the central struct to this package.
@@ -84,6 +85,8 @@ type GameState struct {
 	// the screen with the last action, you have to check the last action of the previous round instead!
 	RoundsLog []*RoundLog `json:"actionLog"`
 
+	RoundFinishedConfirmedPlayerIDs map[int]bool `json:"roundFinishedConfirmedPlayerIDs"`
+
 	deck *deck `json:"-"`
 }
 
@@ -97,7 +100,7 @@ type Player struct {
 
 // RoundLog is a log of a round that was played in the game
 type RoundLog struct {
-	// HandsDealt is a map from PlayerID to its hand durinf this round.
+	// HandsDealt is a map from PlayerID to its hand during this round.
 	HandsDealt map[int]*Hand `json:"handsDealt"`
 
 	// For envido/truco winners and points, note that there is still a
@@ -163,6 +166,7 @@ func (g *GameState) startNewRound() {
 	g.CardRevealSequence = &CardRevealSequence{}
 	g.IsEnvidoFinished = false
 	g.IsRoundFinished = false
+	g.RoundFinishedConfirmedPlayerIDs = map[int]bool{}
 	g.RoundsLog = append(g.RoundsLog, &RoundLog{
 		HandsDealt: map[int]*Hand{
 			g.TurnPlayerID:         g.Players[g.TurnPlayerID].Hand,
@@ -178,8 +182,16 @@ func (g *GameState) startNewRound() {
 }
 
 func (g *GameState) RunAction(action Action) error {
+	if action == nil {
+		return nil
+	}
+
 	if g.IsGameEnded {
 		return errGameIsEnded
+	}
+
+	if !g.IsRoundFinished && action.GetPlayerID() != g.TurnPlayerID {
+		return errNotYourTurn
 	}
 
 	if !action.IsPossible(*g) {
@@ -189,14 +201,21 @@ func (g *GameState) RunAction(action Action) error {
 	if err != nil {
 		return err
 	}
-	bs := SerializeAction(action)
-	g.RoundsLog[g.RoundNumber].ActionsLog = append(g.RoundsLog[g.RoundNumber].ActionsLog, ActionLog{
-		PlayerID: g.TurnPlayerID,
-		Action:   bs,
-	})
+
+	if g.IsRoundFinished {
+		log.Println("Round finished")
+	}
+
+	if action.GetName() != CONFIRM_ROUND_FINISHED {
+		g.RoundsLog[g.RoundNumber].ActionsLog = append(g.RoundsLog[g.RoundNumber].ActionsLog, ActionLog{
+			PlayerID: g.TurnPlayerID,
+			Action:   SerializeAction(action),
+		})
+	}
 
 	// Start new round if current round is finished
-	if !g.IsGameEnded && g.IsRoundFinished {
+	if !g.IsGameEnded && g.IsRoundFinished && len(g.RoundFinishedConfirmedPlayerIDs) == 2 {
+		fmt.Println("Starting new round...")
 		g.startNewRound()
 		return nil
 	}
@@ -204,6 +223,16 @@ func (g *GameState) RunAction(action Action) error {
 	// Switch player turn within current round (unless current action doesn't yield turn)
 	if !g.IsGameEnded && !g.IsRoundFinished && action.YieldsTurn(*g) {
 		g.TurnPlayerID, g.TurnOpponentPlayerID = g.TurnOpponentPlayerID, g.TurnPlayerID
+	}
+
+	if g.IsRoundFinished {
+		fmt.Println("len(g.RoundFinishedConfirmedPlayerIDs):", len(g.RoundFinishedConfirmedPlayerIDs))
+	}
+
+	if !g.IsGameEnded && g.IsRoundFinished && len(g.RoundFinishedConfirmedPlayerIDs) == 1 {
+		if g.RoundFinishedConfirmedPlayerIDs[g.TurnPlayerID] {
+			g.TurnPlayerID, g.TurnOpponentPlayerID = g.TurnOpponentPlayerID, g.TurnPlayerID
+		}
 	}
 
 	// Handle end of game due to score
@@ -215,7 +244,11 @@ func (g *GameState) RunAction(action Action) error {
 		}
 	}
 
-	g.PossibleActions = _serializeActions(g.CalculatePossibleActions())
+	possibleActions := g.CalculatePossibleActions()
+	g.PossibleActions = _serializeActions(possibleActions)
+
+	log.Printf("Possible actions: %v\n", possibleActions)
+
 	return nil
 }
 
@@ -245,13 +278,17 @@ type Action interface {
 	IsPossible(g GameState) bool
 	Run(g *GameState) error
 	GetName() string
+	GetPlayerID() int
 	YieldsTurn(g GameState) bool
+
+	fmt.Stringer
 }
 
 var (
 	errActionNotPossible = errors.New("action not possible")
 	errEnvidoFinished    = errors.New("envido finished")
 	errGameIsEnded       = errors.New("game is ended")
+	errNotYourTurn       = errors.New("not your turn")
 )
 
 func (g GameState) CalculatePossibleActions() []Action {
@@ -260,23 +297,25 @@ func (g GameState) CalculatePossibleActions() []Action {
 	allActions := []Action{}
 
 	for _, card := range g.Players[g.TurnPlayerID].Hand.Unrevealed {
-		allActions = append(allActions, newActionRevealCard(card))
+		allActions = append(allActions, NewActionRevealCard(card, g.TurnPlayerID))
 	}
 
 	allActions = append(allActions,
-		newActionSayEnvido(),
-		newActionSayRealEnvido(),
-		newActionSayFaltaEnvido(),
-		newActionSayEnvidoQuiero(envidoScore),
-		newActionSayEnvidoNoQuiero(),
-		newActionSayTruco(),
-		newActionSayTrucoQuiero(),
-		newActionSayTrucoNoQuiero(),
-		newActionSayQuieroRetruco(),
-		newActionSayQuieroValeCuatro(),
-		newActionSaySonBuenas(),
-		newActionSaySonMejores(envidoScore),
-		newActionSayMeVoyAlMazo(),
+		NewActionSayEnvido(g.TurnPlayerID),
+		NewActionSayRealEnvido(g.TurnPlayerID),
+		NewActionSayFaltaEnvido(g.TurnPlayerID),
+		NewActionSayEnvidoQuiero(envidoScore, g.TurnPlayerID),
+		NewActionSayEnvidoNoQuiero(g.TurnPlayerID),
+		NewActionSayTruco(g.TurnPlayerID),
+		NewActionSayTrucoQuiero(g.TurnPlayerID),
+		NewActionSayTrucoNoQuiero(g.TurnPlayerID),
+		NewActionSayQuieroRetruco(g.TurnPlayerID),
+		NewActionSayQuieroValeCuatro(g.TurnPlayerID),
+		NewActionSaySonBuenas(g.TurnPlayerID),
+		NewActionSaySonMejores(envidoScore, g.TurnPlayerID),
+		NewActionSayMeVoyAlMazo(g.TurnPlayerID),
+		NewActionConfirmRoundFinished(g.TurnPlayerID),
+		NewActionConfirmRoundFinished(g.TurnOpponentPlayerID),
 	)
 
 	possibleActions := []Action{}
@@ -333,6 +372,8 @@ func DeserializeAction(bs []byte) (Action, error) {
 		action = &ActionSaySonMejores{}
 	case SAY_ME_VOY_AL_MAZO:
 		action = &ActionSayMeVoyAlMazo{}
+	case CONFIRM_ROUND_FINISHED:
+		action = &ActionConfirmRoundFinished{}
 	default:
 		return nil, fmt.Errorf("unknown action type %v", actionName.Name)
 	}
@@ -356,6 +397,14 @@ func _serializeActions(as []Action) []json.RawMessage {
 func (g *GameState) ToClientGameState(youPlayerID int) ClientGameState {
 	themPlayerID := g.OpponentOf(youPlayerID)
 
+	// GameState may have possible game actions that this player can't take.
+	filteredPossibleActions := []Action{}
+	for _, a := range g.CalculatePossibleActions() {
+		if a.GetPlayerID() == youPlayerID {
+			filteredPossibleActions = append(filteredPossibleActions, a)
+		}
+	}
+
 	cgs := ClientGameState{
 		RoundTurnPlayerID:         g.RoundTurnPlayerID,
 		RoundNumber:               g.RoundNumber,
@@ -368,8 +417,9 @@ func (g *GameState) ToClientGameState(youPlayerID int) ClientGameState {
 		TheirRevealedCards:        g.Players[themPlayerID].Hand.Revealed,
 		YourUnrevealedCards:       g.Players[youPlayerID].Hand.Unrevealed,
 		TheirUnrevealedCardLength: len(g.Players[themPlayerID].Hand.Unrevealed),
-		PossibleActions:           g.PossibleActions,
+		PossibleActions:           _serializeActions(filteredPossibleActions),
 		IsGameEnded:               g.IsGameEnded,
+		IsRoundFinished:           g.IsRoundFinished,
 		WinnerPlayerID:            g.WinnerPlayerID,
 		LastRoundLog:              *g.RoundsLog[g.RoundNumber-1], // TODO elide their unrevealed cards
 	}
@@ -416,6 +466,8 @@ type ClientGameState struct {
 	// a player reaches 30 points.
 	IsGameEnded bool `json:"isGameEnded"`
 
+	IsRoundFinished bool `json:"isRoundFinished"`
+
 	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsEnded` is
 	// `true`. Otherwise, it's -1.
 	WinnerPlayerID int `json:"winnerPlayerID"`
@@ -432,4 +484,8 @@ type ClientGameState struct {
 	// just started, this will be nil. Clients typically want to user this to show the current player
 	// what the opponent just did.
 	LastActionLog *ActionLog `json:"lastActionLog"`
+}
+
+type Bot interface {
+	ChooseAction(ClientGameState) Action
 }

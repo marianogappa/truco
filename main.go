@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/marianogappa/truco/botclient"
 	"github.com/marianogappa/truco/examplebot"
 	"github.com/marianogappa/truco/exampleclient"
 	"github.com/marianogappa/truco/server"
@@ -47,7 +48,7 @@ func main() {
 	case "player":
 		exampleclient.Player(playerNum-1, address)
 	case "bot":
-		examplebot.Bot(playerNum-1, address)
+		botclient.Bot(playerNum-1, address, examplebot.New())
 	default:
 		fmt.Println("Invalid argument. Please provide either server or client.")
 	}

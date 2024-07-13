@@ -7,15 +7,16 @@ import (
 )
 
 const (
-	SAY_ENVIDO           = "say_envido"
-	SAY_REAL_ENVIDO      = "say_real_envido"
-	SAY_FALTA_ENVIDO     = "say_falta_envido"
-	SAY_ENVIDO_QUIERO    = "say_envido_quiero"
-	SAY_ENVIDO_NO_QUIERO = "say_envido_no_quiero"
-	SAY_SON_BUENAS       = "say_son_buenas"
-	SAY_SON_MEJORES      = "say_son_mejores"
-	SAY_ME_VOY_AL_MAZO   = "say_me_voy_al_mazo"
-	REVEAL_CARD          = "reveal_card"
+	SAY_ENVIDO             = "say_envido"
+	SAY_REAL_ENVIDO        = "say_real_envido"
+	SAY_FALTA_ENVIDO       = "say_falta_envido"
+	SAY_ENVIDO_QUIERO      = "say_envido_quiero"
+	SAY_ENVIDO_NO_QUIERO   = "say_envido_no_quiero"
+	SAY_SON_BUENAS         = "say_son_buenas"
+	SAY_SON_MEJORES        = "say_son_mejores"
+	SAY_ME_VOY_AL_MAZO     = "say_me_voy_al_mazo"
+	REVEAL_CARD            = "reveal_card"
+	CONFIRM_ROUND_FINISHED = "confirm_round_finished"
 
 	COST_NOT_READY    = -1
 	COST_FALTA_ENVIDO = -2

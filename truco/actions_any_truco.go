@@ -13,6 +13,9 @@ func (a ActionSayQuieroRetruco) Run(g *GameState) error    { return g.AnyTrucoAc
 func (a ActionSayQuieroValeCuatro) Run(g *GameState) error { return g.AnyTrucoActionRunAction(a) }
 
 func (g GameState) AnyTrucoActionIsPossible(a Action) bool {
+	if g.IsRoundFinished {
+		return false
+	}
 	if !g.EnvidoSequence.IsEmpty() && !g.IsEnvidoFinished {
 		return false
 	}

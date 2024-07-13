@@ -5,11 +5,10 @@ type ActionRevealCard struct {
 	Card Card `json:"card"`
 }
 
-func NewActionRevealCard(card Card) ActionRevealCard {
-	return ActionRevealCard{act: act{Name: "reveal_card"}, Card: card}
-}
-
 func (a ActionRevealCard) IsPossible(g GameState) bool {
+	if g.IsRoundFinished {
+		return false
+	}
 	// If envido was said and it hasn't finished, then the card can't be revealed
 	if !g.IsEnvidoFinished && !g.EnvidoSequence.IsEmpty() && !g.EnvidoSequence.IsFinished() {
 		return false

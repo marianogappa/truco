@@ -25,7 +25,7 @@ func WsSend(conn *websocket.Conn, message any) error {
 func WsReadMessage[U any, T IWebsocketMessage[U]](conn *websocket.Conn, expectedType int) (*U, error) {
 	messageType, message, err := conn.ReadMessage()
 	if messageType != websocket.TextMessage {
-		return nil, fmt.Errorf("Expected text message, got %d", messageType)
+		return nil, fmt.Errorf("Expected text message, got %d with error %v", messageType, err)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("Failed to read message from client: %v", err)

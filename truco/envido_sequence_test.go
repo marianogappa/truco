@@ -26,7 +26,7 @@ func TestEnvidoSequence(t *testing.T) {
 			name: "cannot start with envido_quiero",
 			steps: []testStep{
 				{
-					action:          newActionSayEnvidoQuiero(30),
+					action:          NewActionSayEnvidoQuiero(30, 0),
 					expectedIsValid: false,
 				},
 			},
@@ -35,7 +35,7 @@ func TestEnvidoSequence(t *testing.T) {
 			name: "cannot start with envido_no_quiero",
 			steps: []testStep{
 				{
-					action:          newActionSayEnvidoNoQuiero(),
+					action:          NewActionSayEnvidoNoQuiero(0),
 					expectedIsValid: false,
 				},
 			},
@@ -44,7 +44,7 @@ func TestEnvidoSequence(t *testing.T) {
 			name: "cannot start with son_buenas",
 			steps: []testStep{
 				{
-					action:          newActionSaySonBuenas(),
+					action:          NewActionSaySonBuenas(0),
 					expectedIsValid: false,
 				},
 			},
@@ -53,7 +53,7 @@ func TestEnvidoSequence(t *testing.T) {
 			name: "cannot start with son_mejores",
 			steps: []testStep{
 				{
-					action:          newActionSaySonMejores(10),
+					action:          NewActionSaySonMejores(10, 0),
 					expectedIsValid: false,
 				},
 			},
@@ -62,12 +62,12 @@ func TestEnvidoSequence(t *testing.T) {
 			name: "envido_quiero is valid after envido",
 			steps: []testStep{
 				{
-					action:                         newActionSayEnvido(),
+					action:                         NewActionSayEnvido(0),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 1,
 				},
 				{
-					action:                         newActionSayEnvidoQuiero(30),
+					action:                         NewActionSayEnvidoQuiero(30, 1),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 0,
 				},
@@ -77,17 +77,17 @@ func TestEnvidoSequence(t *testing.T) {
 			name: "basic envido finished sequence with son buenas",
 			steps: []testStep{
 				{
-					action:                         newActionSayEnvido(),
+					action:                         NewActionSayEnvido(0),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 1,
 				},
 				{
-					action:                         newActionSayEnvidoQuiero(30),
+					action:                         NewActionSayEnvidoQuiero(30, 1),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 0,
 				},
 				{
-					action:                         newActionSaySonBuenas(),
+					action:                         NewActionSaySonBuenas(0),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 0, // doesn't yield turn because envido is over, so player who started gets to play
 					expectedIsFinishedAfterRunning: true,
@@ -99,21 +99,21 @@ func TestEnvidoSequence(t *testing.T) {
 			name: "basic envido finished sequence with son buenas, but this time player 1 starts",
 			steps: []testStep{
 				{
-					action:       newActionRevealCard(Card{Number: 1, Suit: ORO}),
+					action:       NewActionRevealCard(Card{Number: 1, Suit: ORO}, 0),
 					ignoreAction: true,
 				},
 				{
-					action:                         newActionSayEnvido(),
+					action:                         NewActionSayEnvido(1),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 0,
 				},
 				{
-					action:                         newActionSayEnvidoQuiero(25),
+					action:                         NewActionSayEnvidoQuiero(25, 0),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 1,
 				},
 				{
-					action:                         newActionSaySonMejores(31),
+					action:                         NewActionSaySonMejores(31, 1),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 1, // doesn't yield turn because envido is over, so player who started gets to play
 					expectedIsFinishedAfterRunning: true,

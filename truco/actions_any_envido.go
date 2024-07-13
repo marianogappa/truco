@@ -13,6 +13,9 @@ func (a ActionSayFaltaEnvido) Run(g *GameState) error { return g.AnyEnvidoAction
 func (a ActionSayRealEnvido) Run(g *GameState) error  { return g.AnyEnvidoActionTypeRunAction(a) }
 
 func (g GameState) AnyEnvidoActionTypeIsPossible(a Action) bool {
+	if g.IsRoundFinished {
+		return false
+	}
 	if g.IsEnvidoFinished {
 		return false
 	}

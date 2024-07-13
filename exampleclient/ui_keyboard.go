@@ -6,13 +6,12 @@ package exampleclient
 import (
 	"log"
 	"os"
-	"strconv"
 
 	"github.com/nsf/termbox-go"
 )
 
-func (u *ui) startKeyEventLoop() {
-	keyPressesCh := make(chan termbox.Event)
+func (u *ui) startKeyEventLoop() chan rune {
+	keyPressesCh := make(chan rune)
 	go func() {
 		for {
 			event := termbox.PollEvent()
@@ -24,33 +23,8 @@ func (u *ui) startKeyEventLoop() {
 				log.Println("Chau!")
 				os.Exit(0)
 			}
-			keyPressesCh <- event
+			keyPressesCh <- event.Ch
 		}
 	}()
-
-	go func() {
-		for {
-			select {
-			case <-keyPressesCh:
-			case <-u.wantKeyPressCh:
-				event := <-keyPressesCh
-				u.sendKeyPressCh <- event.Ch
-			}
-		}
-	}()
-}
-
-func (u *ui) pressAnyKey() {
-	u.wantKeyPressCh <- struct{}{}
-	<-u.sendKeyPressCh
-}
-
-func (u *ui) pressAnyNumber() int {
-	u.wantKeyPressCh <- struct{}{}
-	r := <-u.sendKeyPressCh
-	num, err := strconv.Atoi(string(r))
-	if err != nil {
-		return u.pressAnyNumber()
-	}
-	return num
+	return keyPressesCh
 }
