@@ -44,8 +44,10 @@ func getActionString(log truco.ActionLog, playerID int) string {
 	case truco.SAY_FALTA_ENVIDO:
 		what = fmt.Sprintf("%v falta envido!", said)
 	case truco.SAY_ENVIDO_QUIERO:
-		action := lastAction.(*truco.ActionSayEnvidoQuiero)
-		what = fmt.Sprintf("%v quiero con %d", said, action.Score)
+		what = fmt.Sprintf("%v quiero", said)
+	case truco.SAY_ENVIDO_SCORE:
+		action := lastAction.(*truco.ActionSayEnvidoScore)
+		what = fmt.Sprintf("%d", action.Score)
 	case truco.SAY_ENVIDO_NO_QUIERO:
 		what = fmt.Sprintf("%v no quiero", said)
 	case truco.SAY_TRUCO:
@@ -102,6 +104,9 @@ func spanishAction(action truco.Action) string {
 		return "quiero"
 	case truco.SAY_ENVIDO_NO_QUIERO:
 		return "no quiero"
+	case truco.SAY_ENVIDO_SCORE:
+		_action := action.(*truco.ActionSayEnvidoScore)
+		return fmt.Sprintf("%d", _action.Score)
 	case truco.SAY_TRUCO:
 		return "truco"
 	case truco.SAY_TRUCO_QUIERO:

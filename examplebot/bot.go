@@ -35,8 +35,8 @@ func possibleActionsMap(gs truco.ClientGameState) map[string]truco.Action {
 func filter(possibleActions map[string]truco.Action, candidateActions ...truco.Action) []truco.Action {
 	filteredActions := []truco.Action{}
 	for _, action := range candidateActions {
-		if _, ok := possibleActions[action.GetName()]; ok {
-			filteredActions = append(filteredActions, action)
+		if possibleAction, ok := possibleActions[action.GetName()]; ok {
+			filteredActions = append(filteredActions, possibleAction)
 		}
 	}
 	return filteredActions
@@ -95,7 +95,7 @@ func canAnyEnvido(actions map[string]truco.Action) bool {
 		truco.NewActionSayEnvido(1),
 		truco.NewActionSayRealEnvido(1),
 		truco.NewActionSayFaltaEnvido(1),
-		truco.NewActionSayEnvidoQuiero(0, 1),
+		truco.NewActionSayEnvidoQuiero(1),
 		truco.NewActionSayEnvidoNoQuiero(1),
 	)) > 0
 }
@@ -511,7 +511,7 @@ func envidoNoQuiero() truco.Action {
 	return truco.NewActionSayEnvidoNoQuiero(1)
 }
 func envidoQuiero() truco.Action {
-	return truco.NewActionSayEnvidoQuiero(0, 1)
+	return truco.NewActionSayEnvidoQuiero(1)
 }
 func trucoQuiero() truco.Action {
 	return truco.NewActionSayTrucoQuiero(1)

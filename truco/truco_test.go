@@ -32,7 +32,7 @@ func TestAfterRealEnvidoOptions(t *testing.T) {
 
 	expectedActions := []Action{
 		NewActionSayFaltaEnvido(1),
-		NewActionSayEnvidoQuiero(gameState.Players[gameState.TurnOpponentPlayerID].Hand.EnvidoScore(), 1),
+		NewActionSayEnvidoQuiero(1),
 		NewActionSayEnvidoNoQuiero(1),
 	}
 

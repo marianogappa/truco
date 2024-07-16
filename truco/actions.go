@@ -41,8 +41,12 @@ func NewActionSayEnvidoNoQuiero(playerID int) Action {
 	return ActionSayEnvidoNoQuiero{act: act{Name: SAY_ENVIDO_NO_QUIERO, PlayerID: playerID}}
 }
 
-func NewActionSayEnvidoQuiero(score int, playerID int) Action {
-	return ActionSayEnvidoQuiero{act: act{Name: SAY_ENVIDO_QUIERO, PlayerID: playerID}, Score: score}
+func NewActionSayEnvidoQuiero(playerID int) Action {
+	return ActionSayEnvidoQuiero{act: act{Name: SAY_ENVIDO_QUIERO, PlayerID: playerID}}
+}
+
+func NewActionSayEnvidoScore(score int, playerID int) Action {
+	return ActionSayEnvidoScore{act: act{Name: SAY_ENVIDO_SCORE, PlayerID: playerID}, Score: score}
 }
 
 func NewActionSayTrucoQuiero(playerID int) Action {

@@ -304,7 +304,8 @@ func (g GameState) CalculatePossibleActions() []Action {
 		NewActionSayEnvido(g.TurnPlayerID),
 		NewActionSayRealEnvido(g.TurnPlayerID),
 		NewActionSayFaltaEnvido(g.TurnPlayerID),
-		NewActionSayEnvidoQuiero(envidoScore, g.TurnPlayerID),
+		NewActionSayEnvidoQuiero(g.TurnPlayerID),
+		NewActionSayEnvidoScore(envidoScore, g.TurnPlayerID),
 		NewActionSayEnvidoNoQuiero(g.TurnPlayerID),
 		NewActionSayTruco(g.TurnPlayerID),
 		NewActionSayTrucoQuiero(g.TurnPlayerID),
@@ -354,6 +355,8 @@ func DeserializeAction(bs []byte) (Action, error) {
 		action = &ActionSayFaltaEnvido{}
 	case SAY_ENVIDO_QUIERO:
 		action = &ActionSayEnvidoQuiero{}
+	case SAY_ENVIDO_SCORE:
+		action = &ActionSayEnvidoScore{}
 	case SAY_ENVIDO_NO_QUIERO:
 		action = &ActionSayEnvidoNoQuiero{}
 	case SAY_TRUCO:
@@ -392,6 +395,11 @@ func _serializeActions(as []Action) []json.RawMessage {
 		_as = append(_as, json.RawMessage(SerializeAction(a)))
 	}
 	return _as
+}
+
+func _deserializeCurrentRoundLastAction(g GameState) Action {
+	a, _ := DeserializeAction(g.RoundsLog[g.RoundNumber].ActionsLog[len(g.RoundsLog[g.RoundNumber].ActionsLog)-1].Action)
+	return a
 }
 
 func (g *GameState) ToClientGameState(youPlayerID int) ClientGameState {

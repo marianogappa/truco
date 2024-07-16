@@ -98,7 +98,7 @@ func renderScores(rs renderState) {
 
 	youMano := ""
 	themMano := ""
-	if rs.gs.TurnPlayerID == rs.gs.YouPlayerID {
+	if rs.gs.RoundTurnPlayerID == rs.gs.YouPlayerID {
 		youMano = " (mano)"
 	} else {
 		themMano = " (mano)"

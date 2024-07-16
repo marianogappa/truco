@@ -1,7 +1,8 @@
 package truco
 
 type ActionSayEnvidoNoQuiero struct{ act }
-type ActionSayEnvidoQuiero struct {
+type ActionSayEnvidoQuiero struct{ act }
+type ActionSayEnvidoScore struct {
 	act
 	Score int `json:"score"`
 }
@@ -23,6 +24,17 @@ func (a ActionSayEnvidoQuiero) IsPossible(g GameState) bool {
 		return false
 	}
 	if g.IsEnvidoFinished {
+		return false
+	}
+	return g.EnvidoSequence.CanAddStep(a.GetName())
+}
+
+func (a ActionSayEnvidoScore) IsPossible(g GameState) bool {
+	if len(g.RoundsLog[g.RoundNumber].ActionsLog) == 0 {
+		return false
+	}
+	lastAction := _deserializeCurrentRoundLastAction(g)
+	if lastAction.GetName() != SAY_ENVIDO_QUIERO {
 		return false
 	}
 	return g.EnvidoSequence.CanAddStep(a.GetName())
@@ -84,6 +96,14 @@ func (a ActionSayEnvidoQuiero) Run(g *GameState) error {
 	return nil
 }
 
+func (a ActionSayEnvidoScore) Run(g *GameState) error {
+	if !a.IsPossible(*g) {
+		return errActionNotPossible
+	}
+	g.EnvidoSequence.AddStep(a.GetName())
+	return nil
+}
+
 func (a ActionSayTrucoQuiero) Run(g *GameState) error {
 	if !a.IsPossible(*g) {
 		return errActionNotPossible
@@ -119,4 +139,10 @@ func (a ActionSayTrucoQuiero) YieldsTurn(g GameState) bool {
 func (a ActionSayEnvidoNoQuiero) YieldsTurn(g GameState) bool {
 	// In son_buenas/son_mejores/no_quiero, the turn should go to whoever started the sequence
 	return g.TurnPlayerID != g.EnvidoSequence.StartingPlayerID
+}
+
+func (a ActionSayEnvidoQuiero) YieldsTurn(g GameState) bool {
+	// In envido_quiero, the next turn should go to whoever has to reveal the score.
+	// This should always be the "mano" player.
+	return g.TurnPlayerID != g.RoundTurnPlayerID
 }

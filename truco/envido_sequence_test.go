@@ -26,7 +26,7 @@ func TestEnvidoSequence(t *testing.T) {
 			name: "cannot start with envido_quiero",
 			steps: []testStep{
 				{
-					action:          NewActionSayEnvidoQuiero(30, 0),
+					action:          NewActionSayEnvidoQuiero(0),
 					expectedIsValid: false,
 				},
 			},
@@ -67,7 +67,7 @@ func TestEnvidoSequence(t *testing.T) {
 					expectedPlayerTurnAfterRunning: 1,
 				},
 				{
-					action:                         NewActionSayEnvidoQuiero(30, 1),
+					action:                         NewActionSayEnvidoQuiero(1),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 0,
 				},
@@ -82,7 +82,7 @@ func TestEnvidoSequence(t *testing.T) {
 					expectedPlayerTurnAfterRunning: 1,
 				},
 				{
-					action:                         NewActionSayEnvidoQuiero(30, 1),
+					action:                         NewActionSayEnvidoQuiero(1),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 0,
 				},
@@ -108,7 +108,7 @@ func TestEnvidoSequence(t *testing.T) {
 					expectedPlayerTurnAfterRunning: 0,
 				},
 				{
-					action:                         NewActionSayEnvidoQuiero(25, 0),
+					action:                         NewActionSayEnvidoQuiero(0),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 1,
 				},
