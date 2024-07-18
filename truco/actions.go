@@ -88,3 +88,7 @@ func NewActionSayMeVoyAlMazo(playerID int) Action {
 func NewActionConfirmRoundFinished(playerID int) Action {
 	return ActionConfirmRoundFinished{act: act{Name: CONFIRM_ROUND_FINISHED, PlayerID: playerID}}
 }
+
+func NewActionRevealEnvidoScore(playerID int, score int) Action {
+	return ActionRevealEnvidoScore{act: act{Name: REVEAL_ENVIDO_SCORE, PlayerID: playerID}, Score: score}
+}

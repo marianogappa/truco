@@ -67,6 +67,9 @@ func getActionString(log truco.ActionLog, playerID int) string {
 		what = fmt.Sprintf("%v %d son mejores", said, action.Score)
 	case truco.SAY_ME_VOY_AL_MAZO:
 		what = fmt.Sprintf("%v me voy al mazo", said)
+	case truco.REVEAL_ENVIDO_SCORE:
+		_action := lastAction.(*truco.ActionRevealEnvidoScore)
+		what = fmt.Sprintf("%v en mesa", _action.Score)
 	case truco.CONFIRM_ROUND_FINISHED:
 		what = ""
 	default:
@@ -86,7 +89,7 @@ func spanishScore(score int) string {
 	if score == 15 {
 		return "entraste"
 	}
-	return fmt.Sprintf("%d buenas", score-14)
+	return fmt.Sprintf("%d buenas", score-15)
 }
 
 func spanishAction(action truco.Action) string {
@@ -126,6 +129,9 @@ func spanishAction(action truco.Action) string {
 		return "me voy al mazo"
 	case truco.CONFIRM_ROUND_FINISHED:
 		return "seguir"
+	case truco.REVEAL_ENVIDO_SCORE:
+		_action := action.(*truco.ActionRevealEnvidoScore)
+		return fmt.Sprintf("mostrar las %v", _action.Score)
 	default:
 		return "???"
 	}

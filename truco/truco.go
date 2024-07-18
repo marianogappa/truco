@@ -202,10 +202,6 @@ func (g *GameState) RunAction(action Action) error {
 		return err
 	}
 
-	if g.IsRoundFinished {
-		log.Println("Round finished")
-	}
-
 	if action.GetName() != CONFIRM_ROUND_FINISHED {
 		g.RoundsLog[g.RoundNumber].ActionsLog = append(g.RoundsLog[g.RoundNumber].ActionsLog, ActionLog{
 			PlayerID: g.TurnPlayerID,
@@ -223,10 +219,6 @@ func (g *GameState) RunAction(action Action) error {
 	// Switch player turn within current round (unless current action doesn't yield turn)
 	if !g.IsGameEnded && !g.IsRoundFinished && action.YieldsTurn(*g) {
 		g.TurnPlayerID, g.TurnOpponentPlayerID = g.TurnOpponentPlayerID, g.TurnPlayerID
-	}
-
-	if g.IsRoundFinished {
-		fmt.Println("len(g.RoundFinishedConfirmedPlayerIDs):", len(g.RoundFinishedConfirmedPlayerIDs))
 	}
 
 	if !g.IsGameEnded && g.IsRoundFinished && len(g.RoundFinishedConfirmedPlayerIDs) == 1 {
@@ -293,6 +285,7 @@ var (
 
 func (g GameState) CalculatePossibleActions() []Action {
 	envidoScore := g.Players[g.TurnPlayerID].Hand.EnvidoScore()
+	opponentEnvidoScore := g.Players[g.TurnOpponentPlayerID].Hand.EnvidoScore()
 
 	allActions := []Action{}
 
@@ -317,6 +310,8 @@ func (g GameState) CalculatePossibleActions() []Action {
 		NewActionSayMeVoyAlMazo(g.TurnPlayerID),
 		NewActionConfirmRoundFinished(g.TurnPlayerID),
 		NewActionConfirmRoundFinished(g.TurnOpponentPlayerID),
+		NewActionRevealEnvidoScore(g.TurnPlayerID, envidoScore),
+		NewActionRevealEnvidoScore(g.TurnOpponentPlayerID, opponentEnvidoScore),
 	)
 
 	possibleActions := []Action{}
@@ -377,6 +372,8 @@ func DeserializeAction(bs []byte) (Action, error) {
 		action = &ActionSayMeVoyAlMazo{}
 	case CONFIRM_ROUND_FINISHED:
 		action = &ActionConfirmRoundFinished{}
+	case REVEAL_ENVIDO_SCORE:
+		action = &ActionRevealEnvidoScore{}
 	default:
 		return nil, fmt.Errorf("unknown action type %v", actionName.Name)
 	}
@@ -429,7 +426,12 @@ func (g *GameState) ToClientGameState(youPlayerID int) ClientGameState {
 		IsGameEnded:               g.IsGameEnded,
 		IsRoundFinished:           g.IsRoundFinished,
 		WinnerPlayerID:            g.WinnerPlayerID,
-		LastRoundLog:              *g.RoundsLog[g.RoundNumber-1], // TODO elide their unrevealed cards
+		EnvidoWinnerPlayerID:      g.RoundsLog[g.RoundNumber].EnvidoWinnerPlayerID,
+		WasEnvidoAccepted:         g.EnvidoSequence.WasAccepted(),
+		EnvidoPoints:              g.RoundsLog[g.RoundNumber].EnvidoPoints,
+		TrucoWinnerPlayerID:       g.RoundsLog[g.RoundNumber].TrucoWinnerPlayerID,
+		TrucoPoints:               g.RoundsLog[g.RoundNumber].TrucoPoints,
+		WasTrucoAccepted:          g.TrucoSequence.WasAccepted(),
 	}
 
 	if len(g.RoundsLog[g.RoundNumber].ActionsLog) > 0 {
@@ -480,13 +482,13 @@ type ClientGameState struct {
 	// `true`. Otherwise, it's -1.
 	WinnerPlayerID int `json:"winnerPlayerID"`
 
-	// LastRoundLog is the log of the last round that was played. Clients need this in order to render
-	// the cards of the last round, because upon an action that ends a round, the game state is updated
-	// to the next round, and the cards are no longer available.
-	//
-	// The rendering of the end of the round might also want to show how the points were won, so this
-	// is available as well.
-	LastRoundLog RoundLog `json:"lastRoundLog"`
+	// Some state information about the current round, in case it's useful to the client.
+	EnvidoWinnerPlayerID int  `json:"envidoWinnerPlayerID"`
+	WasEnvidoAccepted    bool `json:"wasEnvidoAccepted"`
+	EnvidoPoints         int  `json:"envidoPoints"`
+	TrucoWinnerPlayerID  int  `json:"trucoWinnerPlayerID"`
+	TrucoPoints          int  `json:"trucoPoints"`
+	WasTrucoAccepted     bool `json:"wasTrucoAccepted"`
 
 	// LastActionLog is the log of the last action that was run in the current round. If the round has
 	// just started, this will be nil. Clients typically want to user this to show the current player

@@ -126,18 +126,18 @@ func renderEndSummary(rs renderState) {
 	switch rs.mode {
 	case PRINT_MODE_SHOW_ROUND_RESULT:
 		envidoPart := "el envido no se jugó"
-		if rs.gs.LastRoundLog.EnvidoWinnerPlayerID != -1 {
+		if rs.gs.EnvidoWinnerPlayerID != -1 {
 			envidoWinner := "vos"
 			won := "ganaste"
-			if rs.gs.LastRoundLog.EnvidoWinnerPlayerID == rs.gs.ThemPlayerID {
+			if rs.gs.EnvidoWinnerPlayerID == rs.gs.ThemPlayerID {
 				envidoWinner = "elle"
 				won = "ganó"
 			}
-			envidoPart = fmt.Sprintf("%v %v %v puntos por el envido", envidoWinner, won, rs.gs.LastRoundLog.EnvidoPoints)
+			envidoPart = fmt.Sprintf("%v %v %v puntos por el envido", envidoWinner, won, rs.gs.EnvidoPoints)
 		}
 		trucoWinner := "vos"
 		won := "ganaste"
-		if rs.gs.LastRoundLog.TrucoWinnerPlayerID == rs.gs.ThemPlayerID {
+		if rs.gs.TrucoWinnerPlayerID == rs.gs.ThemPlayerID {
 			trucoWinner = "elle"
 			won = "ganó"
 		}
@@ -147,7 +147,7 @@ func renderEndSummary(rs renderState) {
 			envidoPart,
 			trucoWinner,
 			won,
-			rs.gs.LastRoundLog.TrucoPoints,
+			rs.gs.TrucoPoints,
 		)
 	case PRINT_MODE_END:
 		var resultText string

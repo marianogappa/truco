@@ -1,8 +1,14 @@
 package truco
 
+import "fmt"
+
 type ActionSayEnvidoNoQuiero struct{ act }
 type ActionSayEnvidoQuiero struct{ act }
 type ActionSayEnvidoScore struct {
+	act
+	Score int `json:"score"`
+}
+type ActionRevealEnvidoScore struct {
 	act
 	Score int `json:"score"`
 }
@@ -38,6 +44,21 @@ func (a ActionSayEnvidoScore) IsPossible(g GameState) bool {
 		return false
 	}
 	return g.EnvidoSequence.CanAddStep(a.GetName())
+}
+
+func (a ActionRevealEnvidoScore) IsPossible(g GameState) bool {
+	if !g.IsRoundFinished {
+		return false
+	}
+	if !g.EnvidoSequence.WasAccepted() {
+		return false
+	}
+	roundLog := g.RoundsLog[g.RoundNumber]
+	if roundLog.EnvidoWinnerPlayerID != a.PlayerID {
+		return false
+	}
+	revealedHand := Hand{Revealed: g.Players[a.PlayerID].Hand.Revealed}
+	return revealedHand.EnvidoScore() != g.Players[a.PlayerID].Hand.EnvidoScore()
 }
 
 func (a ActionSayTrucoQuiero) IsPossible(g GameState) bool {
@@ -104,6 +125,53 @@ func (a ActionSayEnvidoScore) Run(g *GameState) error {
 	return nil
 }
 
+func (a ActionRevealEnvidoScore) Run(g *GameState) error {
+	if !a.IsPossible(*g) {
+		return errActionNotPossible
+	}
+	// We need to reveal the least amount of cards such that the envido score is revealed.
+	// Since we don't know which cards to reveal, let's try all possible reveal combinations.
+	//
+	// allPossibleReveals is a `map[unrevealed_len][]map[card_index]struct{}{}`
+	//
+	// Note: len(unrevealed) == 0 must be impossible if this line is reached
+	_s := struct{}{}
+	allPossibleReveals := map[int][]map[int]struct{}{
+		1: {{0: _s}}, // i.e. if there's only one unrevealed card, only option is to reveal that card
+		2: {{0: _s}, {1: _s}, {0: _s, 1: _s}},
+		3: {{0: _s}, {1: _s}, {2: _s}, {0: _s, 1: _s}, {0: _s, 2: _s}, {1: _s, 2: _s}},
+	}
+	curPlayersHand := g.Players[a.PlayerID].Hand
+
+	// for each possible combination of card reveals
+	for _, is := range allPossibleReveals[len(curPlayersHand.Unrevealed)] {
+		// create a candidate hand but only with reveal cards
+		candidateHand := Hand{Revealed: append([]Card{}, curPlayersHand.Revealed...)}
+		// and reveal the additional cards of this combination
+		for i := range is {
+			candidateHand.Revealed = append(candidateHand.Revealed, curPlayersHand.Unrevealed[i])
+		}
+		// if by revealing these cards we reach the expected envido score, this is the right reveal
+		// Note: this is only true if the reveal combinations are sorted by reveal count ascending!
+		// Note: we didn't add the unrevealed cards to the candidate hand yet, because we need to
+		//       reach the expected envido score only with revealed cards! That's the whole point!
+		if candidateHand.EnvidoScore() == curPlayersHand.EnvidoScore() {
+			// don't forget to add the unrevealed cards to the candidate hand
+			for i := range curPlayersHand.Unrevealed {
+				// add all unrevealed cards from the players hand, except if we revealed them
+				if _, ok := is[i]; !ok {
+					candidateHand.Unrevealed = append(candidateHand.Unrevealed, curPlayersHand.Unrevealed[i])
+				}
+			}
+			// replace hand with our satisfactory candidate hand
+			g.Players[a.PlayerID].Hand = &candidateHand
+			return nil
+		}
+	}
+	// we tried all possible reveal combinations, so it should be impossible that we didn't find the right combination!
+	return fmt.Errorf("couldn't reveal envido score due to a bug, this code should be unreachable")
+}
+
 func (a ActionSayTrucoQuiero) Run(g *GameState) error {
 	if !a.IsPossible(*g) {
 		return errActionNotPossible
@@ -145,4 +213,10 @@ func (a ActionSayEnvidoQuiero) YieldsTurn(g GameState) bool {
 	// In envido_quiero, the next turn should go to whoever has to reveal the score.
 	// This should always be the "mano" player.
 	return g.TurnPlayerID != g.RoundTurnPlayerID
+}
+
+func (a ActionRevealEnvidoScore) YieldsTurn(g GameState) bool {
+	// this action doesn't change turn because the round is finished at this point
+	// and the current player must confirm round finished right after this action
+	return false
 }

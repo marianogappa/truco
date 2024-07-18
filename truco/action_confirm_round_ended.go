@@ -5,7 +5,9 @@ type ActionConfirmRoundFinished struct {
 }
 
 func (a ActionConfirmRoundFinished) IsPossible(g GameState) bool {
-	return g.IsRoundFinished && !g.RoundFinishedConfirmedPlayerIDs[a.PlayerID]
+	return g.IsRoundFinished &&
+		!NewActionRevealEnvidoScore(a.PlayerID, 0).IsPossible(g) &&
+		!g.RoundFinishedConfirmedPlayerIDs[a.PlayerID]
 }
 
 func (a ActionConfirmRoundFinished) Run(g *GameState) error {

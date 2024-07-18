@@ -18,6 +18,7 @@ const (
 	REVEAL_CARD            = "reveal_card"
 	CONFIRM_ROUND_FINISHED = "confirm_round_finished"
 	SAY_ENVIDO_SCORE       = "say_envido_score"
+	REVEAL_ENVIDO_SCORE    = "reveal_envido_score"
 
 	COST_NOT_READY    = -1
 	COST_FALTA_ENVIDO = -2
@@ -141,12 +142,21 @@ func (es EnvidoSequence) Cost(currentPlayerScore int, otherPlayerScore int) (int
 	}
 	cost := validEnvidoSequenceCosts[es.String()]
 	if cost == COST_FALTA_ENVIDO {
-		return es.calculateFaltaEnvidoCost(currentPlayerScore, otherPlayerScore), nil
+		return calculateFaltaEnvidoCost(currentPlayerScore, otherPlayerScore), nil
 	}
 	return cost, nil
 }
 
-func (es EnvidoSequence) calculateFaltaEnvidoCost(meScore int, youScore int) int {
+func (es EnvidoSequence) WasAccepted() bool {
+	for _, step := range es.Sequence {
+		if step == SAY_ENVIDO_QUIERO {
+			return true
+		}
+	}
+	return false
+}
+
+func calculateFaltaEnvidoCost(meScore int, youScore int) int {
 	if meScore < 15 && youScore < 15 {
 		return 15 - meScore
 	}

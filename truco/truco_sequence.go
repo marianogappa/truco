@@ -119,6 +119,15 @@ func (ts TrucoSequence) IsSubsequenceStart() bool {
 	return false
 }
 
+func (ts TrucoSequence) WasAccepted() bool {
+	for _, step := range ts.Sequence {
+		if step == SAY_TRUCO_QUIERO {
+			return true
+		}
+	}
+	return false
+}
+
 var (
 	errInvalidTrucoSequence    = errors.New("invalid truco sequence")
 	errUnfinishedTrucoSequence = errors.New("unfinished truco sequence")
