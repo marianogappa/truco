@@ -266,6 +266,31 @@ func (g *GameState) PrettyPrint() (string, error) {
 	return string(prettyJSON), nil
 }
 
+func (g *GameState) canAwardEnvidoPoints(revealedHand Hand) bool {
+	wonBy := g.RoundsLog[g.RoundNumber].EnvidoWinnerPlayerID
+	if wonBy == -1 {
+		return false
+	}
+	if g.EnvidoSequence.EnvidoPointsAwarded {
+		return false
+	}
+	if revealedHand.EnvidoScore() != g.Players[wonBy].Hand.EnvidoScore() {
+		return false
+	}
+	return true
+}
+
+func (g *GameState) tryAwardEnvidoPoints() bool {
+	if !g.canAwardEnvidoPoints(Hand{Revealed: g.Players[g.TurnPlayerID].Hand.Revealed}) {
+		return false
+	}
+	wonBy := g.RoundsLog[g.RoundNumber].EnvidoWinnerPlayerID
+	score := g.RoundsLog[g.RoundNumber].EnvidoPoints
+	g.Players[wonBy].Score += score
+	g.EnvidoSequence.EnvidoPointsAwarded = true
+	return true
+}
+
 type Action interface {
 	IsPossible(g GameState) bool
 	Run(g *GameState) error
@@ -290,7 +315,13 @@ func (g GameState) CalculatePossibleActions() []Action {
 	allActions := []Action{}
 
 	for _, card := range g.Players[g.TurnPlayerID].Hand.Unrevealed {
-		allActions = append(allActions, NewActionRevealCard(card, g.TurnPlayerID))
+		revealCard := NewActionRevealCard(card, g.TurnPlayerID).(*ActionRevealCard)
+		// If revealing a card would award envido points, then set the score in the action
+		if g.canAwardEnvidoPoints(Hand{Revealed: append(g.Players[g.TurnPlayerID].Hand.Revealed, card)}) {
+			revealCard.EnMesa = true
+			revealCard.Score = g.Players[g.TurnPlayerID].Hand.EnvidoScore()
+		}
+		allActions = append(allActions, revealCard)
 	}
 
 	allActions = append(allActions,

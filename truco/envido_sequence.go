@@ -95,6 +95,13 @@ type EnvidoSequence struct {
 	// This is necessary because when son_buenas/son_mejores/no_quiero is said,
 	// the turn goes to whoever started the envido sequence (i.e. affects YieldsTurn)
 	StartingPlayerID int `json:"startingPlayerID"`
+
+	// EnvidoPointsAwarded is used to determine if the points have already been awarded.
+	//
+	// When an envido is won, points are not automatically awarded. They are when the
+	// winning score is revealed. This could be at the time it is won, but normally
+	// it is revealed later.
+	EnvidoPointsAwarded bool `json:"envidoPointsAwarded"`
 }
 
 func (es EnvidoSequence) String() string {

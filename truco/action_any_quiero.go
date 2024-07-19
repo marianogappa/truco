@@ -53,6 +53,9 @@ func (a ActionRevealEnvidoScore) IsPossible(g GameState) bool {
 	if !g.EnvidoSequence.WasAccepted() {
 		return false
 	}
+	if g.EnvidoSequence.EnvidoPointsAwarded {
+		return false
+	}
 	roundLog := g.RoundsLog[g.RoundNumber]
 	if roundLog.EnvidoWinnerPlayerID != a.PlayerID {
 		return false
@@ -67,10 +70,14 @@ func (a ActionSayTrucoQuiero) IsPossible(g GameState) bool {
 	}
 	// Edge case: Truco -> Envido -> ???
 	// In this case, until envido is resolved, truco cannot continue
-	actionEnvidoQuiero := ActionSayEnvidoQuiero{act: act{Name: SAY_ENVIDO_QUIERO}}
-	actionSonBuenas := ActionSaySonBuenas{act: act{Name: SAY_SON_BUENAS}}
-	actionSonMejores := ActionSaySonMejores{act: act{Name: SAY_SON_MEJORES}}
-	if actionEnvidoQuiero.IsPossible(g) || actionSonBuenas.IsPossible(g) || actionSonMejores.IsPossible(g) {
+	var (
+		me                       = a.PlayerID
+		isEnvidoQuieroPossible   = NewActionSayEnvidoQuiero(me).IsPossible(g)
+		isSonBuenasPossible      = NewActionSaySonBuenas(me).IsPossible(g)
+		isSonMejoresPossible     = NewActionSaySonMejores(0, me).IsPossible(g)
+		isSayEnvidoScorePossible = NewActionSayEnvidoScore(0, me).IsPossible(g)
+	)
+	if isEnvidoQuieroPossible || isSonBuenasPossible || isSonMejoresPossible || isSayEnvidoScorePossible {
 		return false
 	}
 
@@ -83,10 +90,14 @@ func (a ActionSayTrucoNoQuiero) IsPossible(g GameState) bool {
 	}
 	// Edge case: Truco -> Envido -> ???
 	// In this case, until envido is resolved, truco cannot continue
-	actionEnvidoQuiero := ActionSayEnvidoQuiero{act: act{Name: SAY_ENVIDO_QUIERO}}
-	actionSonBuenas := ActionSaySonBuenas{act: act{Name: SAY_SON_BUENAS}}
-	actionSonMejores := ActionSaySonMejores{act: act{Name: SAY_SON_MEJORES}}
-	if actionEnvidoQuiero.IsPossible(g) || actionSonBuenas.IsPossible(g) || actionSonMejores.IsPossible(g) {
+	var (
+		me                       = a.PlayerID
+		isEnvidoQuieroPossible   = NewActionSayEnvidoQuiero(me).IsPossible(g)
+		isSonBuenasPossible      = NewActionSaySonBuenas(me).IsPossible(g)
+		isSonMejoresPossible     = NewActionSaySonMejores(0, me).IsPossible(g)
+		isSayEnvidoScorePossible = NewActionSayEnvidoScore(0, me).IsPossible(g)
+	)
+	if isEnvidoQuieroPossible || isSonBuenasPossible || isSonMejoresPossible || isSayEnvidoScorePossible {
 		return false
 	}
 
@@ -165,6 +176,9 @@ func (a ActionRevealEnvidoScore) Run(g *GameState) error {
 			}
 			// replace hand with our satisfactory candidate hand
 			g.Players[a.PlayerID].Hand = &candidateHand
+			if !g.tryAwardEnvidoPoints() {
+				return fmt.Errorf("couldn't award envido score after running reveal envido score action due to a bug, this code should be unreachable")
+			}
 			return nil
 		}
 	}

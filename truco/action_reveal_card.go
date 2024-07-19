@@ -2,7 +2,9 @@ package truco
 
 type ActionRevealCard struct {
 	act
-	Card Card `json:"card"`
+	Card   Card `json:"card"`
+	EnMesa bool `json:"en_mesa"`
+	Score  int  `json:"score"`
 }
 
 func (a ActionRevealCard) IsPossible(g GameState) bool {
@@ -27,7 +29,7 @@ func (a ActionRevealCard) IsPossible(g GameState) bool {
 	return g.CardRevealSequence.CanAddStep(step, g)
 }
 
-func (a ActionRevealCard) Run(g *GameState) error {
+func (a *ActionRevealCard) Run(g *GameState) error {
 	if !a.IsPossible(*g) {
 		return errActionNotPossible
 	}
@@ -63,6 +65,11 @@ func (a ActionRevealCard) Run(g *GameState) error {
 	// If both players have revealed a card, then envido cannot be played anymore
 	if !g.IsEnvidoFinished && len(g.Players[g.TurnPlayerID].Hand.Revealed) >= 1 && len(g.Players[g.TurnOpponentPlayerID].Hand.Revealed) >= 1 {
 		g.IsEnvidoFinished = true
+	}
+	// Revealing a card may cause the envido score to be revealed
+	if g.tryAwardEnvidoPoints() {
+		a.EnMesa = true
+		a.Score = g.Players[a.PlayerID].Hand.EnvidoScore() // it must be the action's player
 	}
 	return nil
 }

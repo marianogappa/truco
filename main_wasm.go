@@ -51,14 +51,15 @@ func trucoRunAction(this js.Value, p []js.Value) interface{} {
 
 func trucoBotRunAction(this js.Value, p []js.Value) interface{} {
 	action := bot.ChooseAction(state.ToClientGameState(1))
+	fmt.Println("Action chosen by bot:", action)
 
 	err := state.RunAction(action)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("running action: %w", err))
 	}
 	nbs, err := json.Marshal(state.ToClientGameState(0))
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("marshalling game state: %w", err))
 	}
 
 	buffer := js.Global().Get("Uint8Array").New(len(nbs))
