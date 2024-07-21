@@ -442,27 +442,28 @@ func (g *GameState) ToClientGameState(youPlayerID int) ClientGameState {
 	}
 
 	cgs := ClientGameState{
-		RoundTurnPlayerID:         g.RoundTurnPlayerID,
-		RoundNumber:               g.RoundNumber,
-		TurnPlayerID:              g.TurnPlayerID,
-		YouPlayerID:               youPlayerID,
-		ThemPlayerID:              themPlayerID,
-		YourScore:                 g.Players[youPlayerID].Score,
-		TheirScore:                g.Players[themPlayerID].Score,
-		YourRevealedCards:         g.Players[youPlayerID].Hand.Revealed,
-		TheirRevealedCards:        g.Players[themPlayerID].Hand.Revealed,
-		YourUnrevealedCards:       g.Players[youPlayerID].Hand.Unrevealed,
-		TheirUnrevealedCardLength: len(g.Players[themPlayerID].Hand.Unrevealed),
-		PossibleActions:           _serializeActions(filteredPossibleActions),
-		IsGameEnded:               g.IsGameEnded,
-		IsRoundFinished:           g.IsRoundFinished,
-		WinnerPlayerID:            g.WinnerPlayerID,
-		EnvidoWinnerPlayerID:      g.RoundsLog[g.RoundNumber].EnvidoWinnerPlayerID,
-		WasEnvidoAccepted:         g.EnvidoSequence.WasAccepted(),
-		EnvidoPoints:              g.RoundsLog[g.RoundNumber].EnvidoPoints,
-		TrucoWinnerPlayerID:       g.RoundsLog[g.RoundNumber].TrucoWinnerPlayerID,
-		TrucoPoints:               g.RoundsLog[g.RoundNumber].TrucoPoints,
-		WasTrucoAccepted:          g.TrucoSequence.WasAccepted(),
+		RoundTurnPlayerID:           g.RoundTurnPlayerID,
+		RoundNumber:                 g.RoundNumber,
+		TurnPlayerID:                g.TurnPlayerID,
+		YouPlayerID:                 youPlayerID,
+		ThemPlayerID:                themPlayerID,
+		YourScore:                   g.Players[youPlayerID].Score,
+		TheirScore:                  g.Players[themPlayerID].Score,
+		YourRevealedCards:           g.Players[youPlayerID].Hand.Revealed,
+		TheirRevealedCards:          g.Players[themPlayerID].Hand.Revealed,
+		YourUnrevealedCards:         g.Players[youPlayerID].Hand.Unrevealed,
+		PossibleActions:             _serializeActions(filteredPossibleActions),
+		IsGameEnded:                 g.IsGameEnded,
+		IsRoundFinished:             g.IsRoundFinished,
+		WinnerPlayerID:              g.WinnerPlayerID,
+		EnvidoWinnerPlayerID:        g.RoundsLog[g.RoundNumber].EnvidoWinnerPlayerID,
+		WasEnvidoAccepted:           g.EnvidoSequence.WasAccepted(),
+		EnvidoPoints:                g.RoundsLog[g.RoundNumber].EnvidoPoints,
+		TrucoWinnerPlayerID:         g.RoundsLog[g.RoundNumber].TrucoWinnerPlayerID,
+		TrucoPoints:                 g.RoundsLog[g.RoundNumber].TrucoPoints,
+		WasTrucoAccepted:            g.TrucoSequence.WasAccepted(),
+		YourDisplayUnrevealedCards:  g.Players[youPlayerID].Hand.prepareDisplayUnrevealedCards(true),
+		TheirDisplayUnrevealedCards: g.Players[themPlayerID].Hand.prepareDisplayUnrevealedCards(false),
 	}
 
 	if len(g.RoundsLog[g.RoundNumber].ActionsLog) > 0 {
@@ -489,14 +490,31 @@ type ClientGameState struct {
 	// They are the same at the beginning of the round.
 	TurnPlayerID int `json:"turnPlayerID"`
 
-	YouPlayerID               int    `json:"you"`
-	ThemPlayerID              int    `json:"them"`
-	YourScore                 int    `json:"yourScore"`
-	TheirScore                int    `json:"theirScore"`
-	YourRevealedCards         []Card `json:"yourRevealedCards"`
-	TheirRevealedCards        []Card `json:"theirRevealedCards"`
-	YourUnrevealedCards       []Card `json:"yourUnrevealedCards"`
-	TheirUnrevealedCardLength int    `json:"theirUnrevealedCardLength"`
+	YouPlayerID         int    `json:"you"`
+	ThemPlayerID        int    `json:"them"`
+	YourScore           int    `json:"yourScore"`
+	TheirScore          int    `json:"theirScore"`
+	YourRevealedCards   []Card `json:"yourRevealedCards"`
+	TheirRevealedCards  []Card `json:"theirRevealedCards"`
+	YourUnrevealedCards []Card `json:"yourUnrevealedCards"`
+
+	// YourDisplayUnrevealedCards is like YourUnrevealedCards, but it always has 3 cards
+	// and it adds two properties: `IsBackwards` and `IsHole`.
+	//
+	// `IsBackwards` is true if the card is facing backwards (i.e. the client doesn't know what it is).
+	// `IsHole` is true if the card was revealed by the opponent, and it used to be that card.
+	//
+	// Use this property to render the card
+	YourDisplayUnrevealedCards []DisplayCard `json:"yourDisplayUnrevealedCards"`
+
+	// TheirDisplayUnrevealedCards is like TheirUnrevealedCards, but it always has 3 cards
+	// and it adds two properties: `IsBackwards` and `IsHole`.
+	//
+	// `IsBackwards` is true if the card is facing backwards (i.e. the client doesn't know what it is).
+	// `IsHole` is true if the card was revealed by the opponent, and it used to be that card.
+	//
+	// Use this property to render the card
+	TheirDisplayUnrevealedCards []DisplayCard `json:"theirDisplayUnrevealedCards"`
 
 	// PossibleActions is a list of possible actions that the current player can take.
 	// Possible actions are calculated based on game state at the beginning of the round and after

@@ -109,7 +109,17 @@ func renderScores(rs renderState) {
 }
 
 func renderTheirUnrevealedCards(rs renderState) {
-	renderAt(0, 0, strings.Repeat("[] ", rs.gs.TheirUnrevealedCardLength))
+	displayText := ""
+	for _, card := range rs.gs.TheirDisplayUnrevealedCards {
+		if card.IsHole {
+			displayText += "  "
+		} else {
+			displayText += "[]"
+		}
+		displayText += " "
+	}
+
+	renderAt(0, 0, displayText)
 }
 
 func renderTheirRevealedCards(rs renderState) {
@@ -167,7 +177,16 @@ func renderYourRevealedCards(rs renderState) {
 }
 
 func renderYourUnrevealedCards(rs renderState) {
-	renderAt(0, rs.viewportHeight-4, getCardsString(rs.gs.YourUnrevealedCards))
+	displayText := ""
+	for _, card := range rs.gs.YourDisplayUnrevealedCards {
+		if !card.IsHole {
+			displayText += getDisplayCardString(card)
+		} else {
+			displayText += "     "
+		}
+		displayText += "  "
+	}
+	renderAt(0, rs.viewportHeight-4, displayText)
 }
 
 func renderActions(rs renderState) {
@@ -215,6 +234,9 @@ func getCardsString(cards []truco.Card) string {
 }
 
 func getCardString(card truco.Card) string {
+	return fmt.Sprintf("[%v%v ]", card.Number, suitEmoji(card.Suit))
+}
+func getDisplayCardString(card truco.DisplayCard) string {
 	return fmt.Sprintf("[%v%v ]", card.Number, suitEmoji(card.Suit))
 }
 

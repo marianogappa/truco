@@ -158,9 +158,15 @@ func (a ActionRevealEnvidoScore) Run(g *GameState) error {
 	for _, is := range allPossibleReveals[len(curPlayersHand.Unrevealed)] {
 		// create a candidate hand but only with reveal cards
 		candidateHand := Hand{Revealed: append([]Card{}, curPlayersHand.Revealed...)}
+		for i := range curPlayersHand.Unrevealed {
+			card := curPlayersHand.Unrevealed[i]
+			candidateHand.displayUnrevealedCards = append(candidateHand.displayUnrevealedCards, DisplayCard{Number: card.Number, Suit: card.Suit})
+		}
+
 		// and reveal the additional cards of this combination
 		for i := range is {
 			candidateHand.Revealed = append(candidateHand.Revealed, curPlayersHand.Unrevealed[i])
+			candidateHand.displayUnrevealedCards[i].IsHole = true
 		}
 		// if by revealing these cards we reach the expected envido score, this is the right reveal
 		// Note: this is only true if the reveal combinations are sorted by reveal count ascending!

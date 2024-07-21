@@ -22,6 +22,27 @@ type Card struct {
 	Number int `json:"number"`
 }
 
+func (c Card) ToDisplayCard() DisplayCard {
+	return DisplayCard{
+		Suit:   c.Suit,
+		Number: c.Number,
+	}
+}
+
+type DisplayCard struct {
+	// Suit is the card's suit, which can be "oro", "copa", "espada" or "basto".
+	Suit string `json:"suit"`
+
+	// Number is the card's number, from 1 to 12.
+	Number int `json:"number"`
+
+	// This card is backwards (we don't know the suit & number)
+	IsBackwards bool `json:"is_backwards"`
+
+	// This card is a hole (it used to be the card with this suit & number)
+	IsHole bool `json:"is_hole"`
+}
+
 func (c Card) String() string {
 	return fmt.Sprintf("%d de %s", c.Number, c.Suit)
 }
@@ -36,6 +57,8 @@ type deck struct {
 type Hand struct {
 	Unrevealed []Card `json:"unrevealed"`
 	Revealed   []Card `json:"revealed"`
+
+	displayUnrevealedCards []DisplayCard
 }
 
 func (h Hand) DeepCopy() Hand {
@@ -70,14 +93,54 @@ func (h *Hand) RevealCard(card Card) error {
 			return errCardAlreadyRevealed
 		}
 	}
-	for i, c := range h.Unrevealed {
+	for _, c := range h.Unrevealed {
 		if c == card {
 			h.Revealed = append(h.Revealed, c)
-			h.Unrevealed = append(h.Unrevealed[:i], h.Unrevealed[i+1:]...)
+			h.removeUnrevealedCard(c)
 			return nil
 		}
 	}
 	return errCardNotInHand
+}
+
+func (h *Hand) removeUnrevealedCard(card Card) {
+	for i, c := range h.Unrevealed {
+		if c == card {
+			h.Unrevealed = append(h.Unrevealed[:i], h.Unrevealed[i+1:]...)
+			break
+		}
+	}
+	for i := range h.displayUnrevealedCards {
+		if h.displayUnrevealedCards[i].Suit == card.Suit && h.displayUnrevealedCards[i].Number == card.Number {
+			h.displayUnrevealedCards[i].IsHole = true
+			break
+		}
+	}
+}
+
+func (h *Hand) initializeDisplayUnrevealedCards() {
+	h.displayUnrevealedCards = []DisplayCard{}
+	for _, c := range h.Unrevealed {
+		h.displayUnrevealedCards = append(h.displayUnrevealedCards, c.ToDisplayCard())
+	}
+}
+
+// prepareDisplayUnrevealedCards makes sure that display cards are elided when not
+// revealed and for the opponent.
+func (h *Hand) prepareDisplayUnrevealedCards(isYou bool) []DisplayCard {
+	result := []DisplayCard{}
+	result = append(result, h.displayUnrevealedCards...)
+	if isYou {
+		return result
+	}
+	for i := range result {
+		if !result[i].IsHole {
+			result[i].IsBackwards = true
+			result[i].Suit = ""
+			result[i].Number = 0
+		}
+	}
+	return result
 }
 
 var (
@@ -115,7 +178,9 @@ func (d *deck) shuffle() {
 }
 
 func (d *deck) dealHand() *Hand {
-	return d.dealHandFunc()
+	hand := d.dealHandFunc()
+	hand.initializeDisplayUnrevealedCards()
+	return hand
 }
 
 func (d *deck) defaultDealHand() *Hand {
