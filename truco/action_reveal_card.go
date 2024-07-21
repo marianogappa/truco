@@ -67,7 +67,7 @@ func (a *ActionRevealCard) Run(g *GameState) error {
 		g.IsEnvidoFinished = true
 	}
 	// Revealing a card may cause the envido score to be revealed
-	if g.tryAwardEnvidoPoints() {
+	if g.tryAwardEnvidoPoints(a.PlayerID) {
 		a.EnMesa = true
 		a.Score = g.Players[a.PlayerID].Hand.EnvidoScore() // it must be the action's player
 	}

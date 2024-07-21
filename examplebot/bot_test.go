@@ -876,6 +876,22 @@ func TestChanceOfWinningTruco(t *testing.T) {
 			},
 			expected: 0.4,
 		},
+		{
+			name: "test",
+			gs: truco.ClientGameState{
+				YourRevealedCards: []truco.Card{
+					{Suit: truco.ESPADA, Number: 10},
+					{Suit: truco.ORO, Number: 1},
+				},
+				YourUnrevealedCards: []truco.Card{
+					{Suit: truco.BASTO, Number: 1},
+				},
+				TheirRevealedCards: []truco.Card{
+					{Suit: truco.COPA, Number: 4},
+				},
+			},
+			expected: 0.4,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

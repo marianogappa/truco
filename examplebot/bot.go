@@ -2,6 +2,7 @@ package examplebot
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"math/rand"
@@ -9,10 +10,12 @@ import (
 	"github.com/marianogappa/truco/truco"
 )
 
-type Bot struct{}
+type Bot struct {
+	log func(format string, v ...any)
+}
 
 func New() Bot {
-	return Bot{}
+	return Bot{log: func(format string, v ...any) { log.Printf(fmt.Sprintf("Bot: %v\n", format), v...) }}
 }
 
 func _deserializeActions(as []json.RawMessage) []truco.Action {
@@ -65,12 +68,12 @@ func calculateCardStrength(gs truco.Card) int {
 		{Suit: truco.ORO, Number: 7}:    16,
 	}
 	if _, ok := specialValues[gs]; ok {
-		return specialValues[gs]
+		return specialValues[gs] - 4
 	}
 	if gs.Number <= 3 {
-		return gs.Number + 12
+		return gs.Number + 12 - 4
 	}
-	return gs.Number
+	return gs.Number - 4
 }
 
 func faceoffResults(gs truco.ClientGameState) []int {
@@ -82,12 +85,11 @@ func faceoffResults(gs truco.ClientGameState) []int {
 }
 
 func calculateTrucoHandChance(cards []truco.Card) float64 {
-	base := float64(len(cards) * 4)
-	sum := -base
+	sum := 0.0
 	for _, card := range cards {
 		sum += float64(calculateCardStrength(card))
 	}
-	return sum / (19 + 18 + 17 - base)
+	return sum / (15 + 14 + 13)
 }
 
 func canAnyEnvido(actions map[string]truco.Action) bool {
@@ -158,7 +160,7 @@ func sortPossibleEnvidoActions(gs truco.ClientGameState) []truco.Action {
 	return actions
 }
 
-func shouldAnyEnvido(gs truco.ClientGameState, aggresiveness string) bool {
+func shouldAnyEnvido(gs truco.ClientGameState, aggresiveness string, log func(string, ...any)) bool {
 	shouldMap := map[string]int{
 		"low":    29,
 		"normal": 27,
@@ -166,7 +168,7 @@ func shouldAnyEnvido(gs truco.ClientGameState, aggresiveness string) bool {
 	}
 	score := calculateEnvidoScore(gs)
 
-	log.Println("Bot: envido score is", score, "and aggresiveness is", aggresiveness)
+	log("shouldAcceptEnvido: should[%v] = %v, score = %v", aggresiveness, shouldMap[aggresiveness], score)
 
 	return score >= shouldMap[aggresiveness]
 }
@@ -297,19 +299,23 @@ func lowestCardThatBeats(card truco.Card, cards []truco.Card) truco.Card {
 }
 
 func cardsChance(cards []truco.Card) float64 {
-	base := float64(len(cards) * 4)
-	divisor := float64(19.0 - base)
+	divisor := float64(19.0)
 	if len(cards) == 2 {
-		divisor = 19.0 + 18.0 - base
+		divisor = 15.0 + 14.0
 	}
 	if len(cards) == 3 {
-		divisor = 19.0 + 18.0 + 17.0 - base
+		divisor = 15.0 + 14.0 + 13.0
 	}
-	sum := -base
+	sum := 0.0
 	for _, card := range cards {
 		sum += float64(calculateCardStrength(card))
 	}
 	return sum / divisor
+}
+
+func cardsChanceTwoAttempts(cards []truco.Card) float64 {
+	highestNumber := float64(calculateCardStrength(highestOf(cards)))
+	return highestNumber/15.0 + (15.0-highestNumber)/(15.0*15.0)
 }
 
 // No cards => Hand strength
@@ -345,8 +351,12 @@ func cardsChance(cards []truco.Card) float64 {
 //	if I tie or lose against their last card: 0%
 //	otherwise, 100%
 func chanceOfWinningTruco(gs truco.ClientGameState) float64 {
-	if len(gs.YourRevealedCards) == 0 && len(gs.TheirRevealedCards) == 0 {
-		return calculateTrucoHandChance(gs.YourUnrevealedCards)
+	if len(gs.YourRevealedCards) <= 1 && len(gs.TheirRevealedCards) == 0 {
+		return cardsChance(append(gs.YourRevealedCards, gs.YourUnrevealedCards...))
+	}
+
+	if len(gs.TheirRevealedCards) == 2 && len(gs.YourRevealedCards) == 3 {
+		return cardsChance([]truco.Card{gs.YourRevealedCards[2]})
 	}
 
 	if len(gs.TheirRevealedCards) == 1 && len(gs.YourRevealedCards) == 0 {
@@ -356,7 +366,9 @@ func chanceOfWinningTruco(gs truco.ClientGameState) float64 {
 		if canTieCard(gs.TheirRevealedCards[0], gs.YourUnrevealedCards) {
 			return cardsChance([]truco.Card{highestOf(gs.YourUnrevealedCards)})
 		}
-		return cardsChance(cardsWithoutLowest(gs.YourUnrevealedCards)) * 0.66
+		// In this case, bot cannot win the first faceoff. Therefore, in order to win, the next two faceoffs have to be won
+		chance := cardsChance(cardsWithoutLowest(gs.YourUnrevealedCards))
+		return chance * chance
 	}
 
 	// If it's the bot's turn, it means that the faceoff was a tie or the bot is winning
@@ -392,8 +404,15 @@ func chanceOfWinningTruco(gs truco.ClientGameState) float64 {
 		return 0.0
 	}
 
+	// Bot won first round
+	if len(gs.TheirRevealedCards) == 1 && len(gs.YourRevealedCards) == 2 {
+		// In this case the bot only has to win one of the next two faceoffs
+		chance := cardsChanceTwoAttempts([]truco.Card{gs.YourUnrevealedCards[0], gs.YourRevealedCards[len(gs.YourRevealedCards)-1]})
+		return chance
+	}
+
 	// This should be unreachable, but in this case return 0.0
-	return 0.0
+	panic("this code should be unreachable! bug in chanceOfWinningTruco! please report this bug.")
 }
 
 func sortPossibleTrucoActions(gs truco.ClientGameState) []truco.Action {
@@ -445,24 +464,75 @@ func chooseTrucoAction(gs truco.ClientGameState, aggresiveness string) truco.Act
 	return possibleActions[bucket]
 }
 
-func shouldAcceptTruco(gs truco.ClientGameState, aggresiveness string) bool {
+func shouldAcceptTruco(gs truco.ClientGameState, aggresiveness string, log func(string, ...any)) bool {
 	shouldMap := map[string]float64{
 		"low":    0.55,
 		"normal": 0.5,
 		"high":   0.461, // This is the average hand chance
 	}
 	chance := chanceOfWinningTruco(gs)
-	log.Println("Bot: chanceOfWinningTruco: ", chance)
-
-	log.Println("Bot: truco chance is", chance, "and aggresiveness is", aggresiveness)
-
+	log("shouldAcceptTruco: should[%v] = %v, chance = %v", aggresiveness, shouldMap[aggresiveness], chance)
 	return chance >= shouldMap[aggresiveness]
 }
 
-func chooseCardToThrow(gs truco.ClientGameState) truco.Action {
+func losesHandWithNextCard(gs truco.ClientGameState) bool {
+	if len(gs.TheirRevealedCards) < 2 {
+		return false // This face off doesn't decide who wins
+	}
+	if len(gs.TheirRevealedCards) != len(gs.YourRevealedCards)+1 {
+		return false // It's not the bot's turn to play a card
+	}
+	var (
+		youMano         = gs.RoundTurnPlayerID == gs.YouPlayerID
+		faceoffResults  = faceoffResults(gs)
+		theirCard       = gs.TheirRevealedCards[len(gs.YourRevealedCards)]
+		yourHighestCard = highestOf(gs.YourUnrevealedCards)
+	)
+	// The result of the current faceoff between bot & other
+	switch yourHighestCard.CompareTrucoScore(theirCard) {
+	case 1:
+		return false // Bot wins, so it doesn't lose with the next card
+	case -1:
+		return true // Bot loses
+	case 0: // If bot ties, then it depends on previous faceoffs
+		switch len(faceoffResults) {
+		// There was only one previous faceoff
+		case 1:
+			switch faceoffResults[0] {
+			case 0, 1: // If bot tied or won, a tie doesn't lose the hand
+				return false
+			case -1: // If bot lost, a tie loses the hand
+				return true
+			}
+		case 2:
+			// If bot won any of the previous faceoffs, a tie doesn't lose the hand
+			if faceoffResults[0] == 1 || faceoffResults[1] == 1 {
+				return false
+			}
+			// If bot lost any of the previous faceoffs, a tie loses the hand
+			if faceoffResults[0] == -1 || faceoffResults[1] == -1 {
+				return true
+			}
+			// If both faceoffs were ties, then it depends on who's mano
+			if faceoffResults[0] == 0 && faceoffResults[1] == 0 {
+				return !youMano
+			}
+		}
+	}
+	panic("this code should be unreachable! bug in losesHandWithNextCard! please report this bug.")
+}
+
+func chooseCardToThrow(gs truco.ClientGameState, log func(string, ...any)) truco.Action {
+	actions := possibleActionsMap(gs)
+	// If me_voy_al_mazo is possible and the card is lower than the other's revealed card, say me_voy_al_mazo
+	if len(filter(actions, meVoy(gs))) > 0 && len(gs.TheirRevealedCards) > len(gs.YourRevealedCards) && losesHandWithNextCard(gs) {
+		log("I'm losing the hand with the next card, so I'm going to say me_voy_al_mazo")
+		return truco.NewActionSayMeVoyAlMazo(gs.YouPlayerID)
+	}
+
 	// If there's only one card left, throw it
 	if len(gs.YourUnrevealedCards) == 1 {
-		return truco.NewActionRevealCard(gs.YourUnrevealedCards[0], 1)
+		return truco.NewActionRevealCard(gs.YourUnrevealedCards[0], gs.YouPlayerID)
 	}
 
 	// If they have no revealed cards, throw the weakest card
@@ -473,27 +543,27 @@ func chooseCardToThrow(gs truco.ClientGameState) truco.Action {
 				weakestCard = card
 			}
 		}
-		return truco.NewActionRevealCard(weakestCard, 1)
+		return truco.NewActionRevealCard(weakestCard, gs.YouPlayerID)
 	}
 
 	// If they have one more revealed card then me, throw the lowest card that beats their last card
 	if len(gs.TheirRevealedCards) == len(gs.YourRevealedCards)+1 {
 		lowestCardThatBeats := lowestCardThatBeats(gs.TheirRevealedCards[len(gs.YourRevealedCards)], gs.YourUnrevealedCards)
 		if lowestCardThatBeats.Number != 0 {
-			return truco.NewActionRevealCard(lowestCardThatBeats, 1)
+			return truco.NewActionRevealCard(lowestCardThatBeats, gs.YouPlayerID)
 		}
 		// Otherwise throw the lowest card
-		return truco.NewActionRevealCard(lowestOf(gs.YourUnrevealedCards), 1)
+		return truco.NewActionRevealCard(lowestOf(gs.YourUnrevealedCards), gs.YouPlayerID)
 	}
 
 	// If we have the same amount of revealed cards, and the last faceoff was won by me, throw the lowest card
 	results := faceoffResults(gs)
 	if results[len(results)-1] == 1 {
-		return truco.NewActionRevealCard(lowestOf(gs.YourUnrevealedCards), 1)
+		return truco.NewActionRevealCard(lowestOf(gs.YourUnrevealedCards), gs.YouPlayerID)
 	}
 
 	// If they have the same amount of revealed cards as me, throw the highest card left
-	return truco.NewActionRevealCard(highestOf(gs.YourUnrevealedCards), 1)
+	return truco.NewActionRevealCard(highestOf(gs.YourUnrevealedCards), gs.YouPlayerID)
 }
 
 func getRandomAction(actions []truco.Action) truco.Action {
@@ -501,70 +571,77 @@ func getRandomAction(actions []truco.Action) truco.Action {
 	return actions[index]
 }
 
-func sonBuenas() truco.Action {
-	return truco.NewActionSaySonBuenas(1)
+func sonBuenas(gs truco.ClientGameState) truco.Action {
+	return truco.NewActionSaySonBuenas(gs.YouPlayerID)
 }
-func sonMejores() truco.Action {
-	return truco.NewActionSaySonMejores(0, 1)
+func sonMejores(gs truco.ClientGameState) truco.Action {
+	return truco.NewActionSaySonMejores(0, gs.YouPlayerID)
 }
-func envidoNoQuiero() truco.Action {
-	return truco.NewActionSayEnvidoNoQuiero(1)
+func envidoNoQuiero(gs truco.ClientGameState) truco.Action {
+	return truco.NewActionSayEnvidoNoQuiero(gs.YouPlayerID)
 }
-func envidoQuiero() truco.Action {
-	return truco.NewActionSayEnvidoQuiero(1)
+func envidoQuiero(gs truco.ClientGameState) truco.Action {
+	return truco.NewActionSayEnvidoQuiero(gs.YouPlayerID)
 }
-func trucoQuiero() truco.Action {
-	return truco.NewActionSayTrucoQuiero(1)
+func trucoQuiero(gs truco.ClientGameState) truco.Action {
+	return truco.NewActionSayTrucoQuiero(gs.YouPlayerID)
 }
-func _truco() truco.Action {
-	return truco.NewActionSayTruco(1)
+func _truco(gs truco.ClientGameState) truco.Action {
+	return truco.NewActionSayTruco(gs.YouPlayerID)
 }
-func revealCard() truco.Action {
-	return truco.NewActionRevealCard(truco.Card{}, 1)
+func revealCard(gs truco.ClientGameState) truco.Action {
+	return truco.NewActionRevealCard(truco.Card{}, gs.YouPlayerID)
+}
+func meVoy(gs truco.ClientGameState) truco.Action {
+	return truco.NewActionSayMeVoyAlMazo(gs.YouPlayerID)
 }
 
 func (m Bot) ChooseAction(gs truco.ClientGameState) truco.Action {
 	actions := possibleActionsMap(gs)
-	log.Println("Bot: possible actions are", actions)
+	for _, action := range actions {
+		m.log("possible action: %v", action)
+	}
 
 	if len(gs.PossibleActions) == 0 {
-		log.Println("Bot: there are no actions left.")
+		m.log("there are no actions left.")
 		return nil
 	}
 
 	// If there's only a say_son_buenas, say_son_mejores or a single action, choose it
-	sonBuenasActions := filter(actions, sonBuenas())
+	sonBuenasActions := filter(actions, sonBuenas(gs))
 	if len(sonBuenasActions) > 0 {
-		log.Println("Bot: I have to say son buenas.")
+		m.log("I have to say son buenas.")
 		return sonBuenasActions[0]
 	}
-	sonMejoresActions := filter(actions, sonMejores())
+	sonMejoresActions := filter(actions, sonMejores(gs))
 	if len(sonMejoresActions) > 0 {
-		log.Println("Bot: I have to say son mejores.")
+		m.log("I have to say son mejores.")
 		return sonMejoresActions[0]
 	}
 	if len(gs.PossibleActions) == 1 {
-		log.Println("Bot: there was only one action: ", string(gs.PossibleActions[0]))
+		m.log("there was only one action: %v", string(gs.PossibleActions[0]))
 		return _deserializeActions(gs.PossibleActions)[0]
 	}
 
-	aggresiveness := calculateAggresiveness(gs)
+	var (
+		aggresiveness = calculateAggresiveness(gs)
+		shouldEnvido  = shouldAnyEnvido(gs, aggresiveness, m.log)
+		shouldTruco   = shouldAcceptTruco(gs, aggresiveness, m.log)
+	)
 
 	// Handle envido responses or actions
 	if canAnyEnvido(actions) {
-		log.Println("Bot: Envido actions are on the table.")
-		should := shouldAnyEnvido(gs, aggresiveness)
-		log.Println("Bot: should envido?", should)
+		m.log("Envido actions are on the table.")
 
-		if !should && len(filter(actions, envidoNoQuiero())) > 0 {
-			log.Println("Bot: I said no quiero to envido due to considering I shouldn't based on my aggresiveness, which is", aggresiveness, "and my envido score is", calculateEnvidoScore(gs))
-			return truco.NewActionSayEnvidoNoQuiero(1)
-		}
-		if should && len(filter(actions, envidoQuiero())) > 0 {
-			log.Println("Bot: I chose an envido action due to considering I should based on my aggresiveness, which is", aggresiveness, "and my envido score is", calculateEnvidoScore(gs))
+		if shouldEnvido && len(filter(actions, envidoQuiero(gs))) > 0 {
+			m.log("I chose an envido action due to considering I should based on my aggresiveness, which is %v and my envido score is %v", aggresiveness, calculateEnvidoScore(gs))
 			return chooseEnvidoAction(gs, aggresiveness)
 		}
-		if should {
+		if !shouldEnvido && len(filter(actions, envidoNoQuiero(gs))) > 0 {
+			m.log("I said no quiero to envido due to considering I shouldn't based on my aggresiveness, which is %v and my envido score is %v", aggresiveness, calculateEnvidoScore(gs))
+			return truco.NewActionSayEnvidoNoQuiero(1)
+		}
+		if shouldEnvido {
 			// This is the case where the bot initiates the envido
 			// Sometimes (<50%), a human player would hide their envido by not initiating, and hoping the other says it first
 			// TODO: should this chance based on aggresiveness?
@@ -574,32 +651,30 @@ func (m Bot) ChooseAction(gs truco.ClientGameState) truco.Action {
 		}
 	}
 
-	shouldTruco := shouldAcceptTruco(gs, aggresiveness)
-	log.Println("Bot: should truco?", shouldTruco)
-
 	// Handle truco responses
-	if len(filter(actions, trucoQuiero())) > 0 {
+	if len(filter(actions, trucoQuiero(gs))) > 0 {
+		m.log("I have to answer a truco question. My previous analysis is: %v", shouldTruco)
 		if shouldTruco {
-			log.Println("Bot: I chose a accept truco with some truco action due to considering I should based on my aggresiveness, which is", aggresiveness)
+			m.log("Choosing truco acceptance action")
 			return chooseTrucoAction(gs, aggresiveness)
 		}
-		log.Println("Bot: I chose to say no quiero to truco due to considering I should based on my aggresiveness, which is", aggresiveness)
-		return truco.NewActionSayTrucoNoQuiero(1)
+		m.log("Choosing no quiero truco action")
+		return truco.NewActionSayTrucoNoQuiero(gs.YouPlayerID)
 	}
 
 	// Handle say truco
-	if len(filter(actions, _truco())) > 0 && shouldTruco {
-		log.Println("Bot: I chose to say truco due to considering I should based on my aggresiveness, which is", aggresiveness)
+	if len(filter(actions, _truco(gs))) > 0 && shouldTruco {
+		m.log("Even though I haven't been asked, I'm going to say truco due to analysis that I should.")
 		return chooseTrucoAction(gs, aggresiveness)
 	}
 
 	// Only throw card left
-	if len(filter(actions, revealCard())) > 0 {
-		log.Println("Bot: I chose to reveal a card due to being the last action left.")
-		return chooseCardToThrow(gs)
+	if len(filter(actions, revealCard(gs))) > 0 {
+		m.log("I chose to reveal a card due to being the last action left.")
+		return chooseCardToThrow(gs, m.log)
 	}
 
 	// This should be unreachable, but in this case choose random action
-	log.Println("Bot: I shouldn't have arrived here, so I'm choosing a random action.")
+	m.log("I shouldn't have arrived here, so I'm choosing a random action.")
 	return getRandomAction(_deserializeActions(gs.PossibleActions))
 }

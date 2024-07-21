@@ -280,8 +280,8 @@ func (g *GameState) canAwardEnvidoPoints(revealedHand Hand) bool {
 	return true
 }
 
-func (g *GameState) tryAwardEnvidoPoints() bool {
-	if !g.canAwardEnvidoPoints(Hand{Revealed: g.Players[g.TurnPlayerID].Hand.Revealed}) {
+func (g *GameState) tryAwardEnvidoPoints(playerID int) bool {
+	if !g.canAwardEnvidoPoints(Hand{Revealed: g.Players[playerID].Hand.Revealed}) {
 		return false
 	}
 	wonBy := g.RoundsLog[g.RoundNumber].EnvidoWinnerPlayerID

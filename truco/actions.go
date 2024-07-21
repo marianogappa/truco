@@ -1,6 +1,9 @@
 package truco
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type act struct {
 	Name     string `json:"name"`
@@ -18,7 +21,8 @@ func (a act) GetPlayerID() int {
 }
 
 func (a act) String() string {
-	return fmt.Sprintf("%v runs %v", a.PlayerID, a.Name)
+	name := strings.ReplaceAll(strings.TrimPrefix(a.Name, "say_"), "_", " ")
+	return fmt.Sprintf("Player %v says %v", a.PlayerID, name)
 }
 
 func (a act) YieldsTurn(g GameState) bool {
@@ -91,4 +95,24 @@ func NewActionConfirmRoundFinished(playerID int) Action {
 
 func NewActionRevealEnvidoScore(playerID int, score int) Action {
 	return &ActionRevealEnvidoScore{act: act{Name: REVEAL_ENVIDO_SCORE, PlayerID: playerID}, Score: score}
+}
+
+func (a ActionSaySonMejores) String() string {
+	return fmt.Sprintf("Player %v says %v son mejores", a.PlayerID, a.Score)
+}
+
+func (a ActionRevealEnvidoScore) String() string {
+	return fmt.Sprintf("Player %v says %v en mesa", a.PlayerID, a.Score)
+}
+
+func (a ActionRevealCard) String() string {
+	text := fmt.Sprintf("Player %v reveals %v of %v", a.PlayerID, a.Card.Number, a.Card.Suit)
+	if a.EnMesa {
+		text = fmt.Sprintf("%v (%v en mesa)", text, a.Score)
+	}
+	return text
+}
+
+func (a ActionConfirmRoundFinished) String() string {
+	return fmt.Sprintf("Player %v confirms round finished", a.PlayerID)
 }

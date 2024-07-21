@@ -176,8 +176,8 @@ func (a ActionRevealEnvidoScore) Run(g *GameState) error {
 			}
 			// replace hand with our satisfactory candidate hand
 			g.Players[a.PlayerID].Hand = &candidateHand
-			if !g.tryAwardEnvidoPoints() {
-				return fmt.Errorf("couldn't award envido score after running reveal envido score action due to a bug, this code should be unreachable")
+			if !g.tryAwardEnvidoPoints(a.PlayerID) {
+				panic("couldn't award envido score after running reveal envido score action due to a bug, this code should be unreachable")
 			}
 			return nil
 		}

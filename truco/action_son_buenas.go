@@ -45,7 +45,7 @@ func (a ActionSaySonBuenas) Run(g *GameState) error {
 	g.RoundsLog[g.RoundNumber].EnvidoPoints = cost
 	g.RoundsLog[g.RoundNumber].EnvidoWinnerPlayerID = g.TurnOpponentPlayerID
 	g.IsEnvidoFinished = true
-	g.tryAwardEnvidoPoints()
+	g.tryAwardEnvidoPoints(a.PlayerID)
 	return nil
 }
 
