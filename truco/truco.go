@@ -406,7 +406,7 @@ func DeserializeAction(bs []byte) (Action, error) {
 	case REVEAL_ENVIDO_SCORE:
 		action = &ActionRevealEnvidoScore{}
 	default:
-		return nil, fmt.Errorf("unknown action type %v", actionName.Name)
+		return nil, fmt.Errorf("unknown action: [%v]", string(bs))
 	}
 
 	err = json.Unmarshal(bs, action)
