@@ -68,7 +68,7 @@ type GameState struct {
 	// a player reaches 30 points.
 	IsGameEnded bool `json:"isGameEnded"`
 
-	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsEnded` is
+	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsGameEnded` is
 	// `true`. Otherwise, it's -1.
 	WinnerPlayerID int `json:"winnerPlayerID"`
 
@@ -187,7 +187,7 @@ func (g *GameState) RunAction(action Action) error {
 	}
 
 	if g.IsGameEnded {
-		return errGameIsEnded
+		return fmt.Errorf("%w trying to run [%v]", errGameIsEnded, action)
 	}
 
 	if !g.IsRoundFinished && action.GetPlayerID() != g.TurnPlayerID {
@@ -269,6 +269,9 @@ func (g *GameState) PrettyPrint() (string, error) {
 func (g *GameState) canAwardEnvidoPoints(revealedHand Hand) bool {
 	wonBy := g.RoundsLog[g.RoundNumber].EnvidoWinnerPlayerID
 	if wonBy == -1 {
+		return false
+	}
+	if !g.EnvidoSequence.WasAccepted() {
 		return false
 	}
 	if g.EnvidoSequence.EnvidoPointsAwarded {
@@ -426,7 +429,8 @@ func _serializeActions(as []Action) []json.RawMessage {
 }
 
 func _deserializeCurrentRoundLastAction(g GameState) Action {
-	a, _ := DeserializeAction(g.RoundsLog[g.RoundNumber].ActionsLog[len(g.RoundsLog[g.RoundNumber].ActionsLog)-1].Action)
+	lastAction := g.RoundsLog[g.RoundNumber].ActionsLog[len(g.RoundsLog[g.RoundNumber].ActionsLog)-1].Action
+	a, _ := DeserializeAction(lastAction)
 	return a
 }
 
@@ -527,7 +531,7 @@ type ClientGameState struct {
 
 	IsRoundFinished bool `json:"isRoundFinished"`
 
-	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsEnded` is
+	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsGameEnded` is
 	// `true`. Otherwise, it's -1.
 	WinnerPlayerID int `json:"winnerPlayerID"`
 

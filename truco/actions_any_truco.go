@@ -28,19 +28,6 @@ func (g GameState) AnyTrucoActionIsPossible(a Action) bool {
 	return g.TrucoSequence.CanAddStep(a.GetName())
 }
 
-func (g GameState) IsLastActionOfName(name string) bool {
-	actionsLog := g.RoundsLog[g.RoundNumber].ActionsLog
-	if len(actionsLog) == 0 {
-		return false
-	}
-	lastActionBs := actionsLog[len(actionsLog)-1].Action
-	lastAction, err := DeserializeAction(lastActionBs)
-	if err != nil {
-		return false
-	}
-	return lastAction.GetName() == name
-}
-
 func (g *GameState) AnyTrucoActionRunAction(at Action) error {
 	if !g.AnyTrucoActionIsPossible(at) {
 		return errActionNotPossible
