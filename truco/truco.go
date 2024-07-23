@@ -7,6 +7,10 @@ import (
 	"log"
 )
 
+// MaxPoints is the points a player must reach to win the game.
+// It is set as a const in case support for 15 points games is needed in the future.
+const MaxPoints = 30
+
 // GameState represents the state of a Truco game. It is the central struct to this package.
 //
 // If you want to implement a client, you should look at ClientGameState instead.
@@ -65,7 +69,7 @@ type GameState struct {
 	IsRoundFinished bool `json:"isRoundFinished"`
 
 	// IsGameEnded is true if the whole game is ended, rather than an individual round. This happens when
-	// a player reaches 30 points.
+	// a player reaches MaxPoints points.
 	IsGameEnded bool `json:"isGameEnded"`
 
 	// WinnerPlayerID is the player ID of the player who won the game. This is only set when `IsGameEnded` is
@@ -94,7 +98,7 @@ type Player struct {
 	// Hands contains the revealed and unrevealed cards of the player.
 	Hand *Hand `json:"hand"`
 
-	// Score is the player's scores (from 0 to 30).
+	// Score is the player's scores (from 0 to MaxPoints).
 	Score int `json:"score"`
 }
 
@@ -229,8 +233,8 @@ func (g *GameState) RunAction(action Action) error {
 
 	// Handle end of game due to score
 	for playerID := range g.Players {
-		if g.Players[playerID].Score >= 30 {
-			g.Players[playerID].Score = 30
+		if g.Players[playerID].Score >= MaxPoints {
+			g.Players[playerID].Score = MaxPoints
 			g.IsGameEnded = true
 			g.WinnerPlayerID = playerID
 		}
@@ -312,6 +316,7 @@ var (
 )
 
 func (g GameState) CalculatePossibleActions() []Action {
+
 	envidoScore := g.Players[g.TurnPlayerID].Hand.EnvidoScore()
 	opponentEnvidoScore := g.Players[g.TurnOpponentPlayerID].Hand.EnvidoScore()
 
@@ -347,6 +352,19 @@ func (g GameState) CalculatePossibleActions() []Action {
 		NewActionRevealEnvidoScore(g.TurnPlayerID, envidoScore),
 		NewActionRevealEnvidoScore(g.TurnOpponentPlayerID, opponentEnvidoScore),
 	)
+
+	// The reveal_envido_score action happens in two cases:
+	// 1. Round has ended and player hasn't shown envido score yet
+	// 2. Round is going on, but player would win the game by revealing the score
+	//
+	// In both cases, this should be the only action available. So don't check others.
+	actionRevealEnvidoScore := NewActionRevealEnvidoScore(g.TurnPlayerID, envidoScore)
+	if actionRevealEnvidoScore.IsPossible(g) {
+		allActions = []Action{
+			actionRevealEnvidoScore,
+			NewActionRevealEnvidoScore(g.TurnOpponentPlayerID, opponentEnvidoScore),
+		}
+	}
 
 	possibleActions := []Action{}
 	for _, action := range allActions {
@@ -526,7 +544,7 @@ type ClientGameState struct {
 	PossibleActions []json.RawMessage `json:"possibleActions"`
 
 	// IsGameEnded is true if the whole game is ended, rather than an individual round. This happens when
-	// a player reaches 30 points.
+	// a player reaches MaxPoints points.
 	IsGameEnded bool `json:"isGameEnded"`
 
 	IsRoundFinished bool `json:"isRoundFinished"`

@@ -47,9 +47,6 @@ func (a ActionSayEnvidoScore) IsPossible(g GameState) bool {
 }
 
 func (a ActionRevealEnvidoScore) IsPossible(g GameState) bool {
-	if !g.IsRoundFinished {
-		return false
-	}
 	if !g.EnvidoSequence.WasAccepted() {
 		return false
 	}
@@ -58,6 +55,9 @@ func (a ActionRevealEnvidoScore) IsPossible(g GameState) bool {
 	}
 	roundLog := g.RoundsLog[g.RoundNumber]
 	if roundLog.EnvidoWinnerPlayerID != a.PlayerID {
+		return false
+	}
+	if !g.IsRoundFinished && g.Players[a.PlayerID].Score+roundLog.EnvidoPoints < MaxPoints {
 		return false
 	}
 	revealedHand := Hand{Revealed: g.Players[a.PlayerID].Hand.Revealed}
