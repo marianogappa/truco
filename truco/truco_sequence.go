@@ -12,15 +12,13 @@ const (
 	SAY_QUIERO_VALE_CUATRO = "say_quiero_vale_cuatro"
 	SAY_TRUCO_QUIERO       = "say_truco_quiero"
 	SAY_TRUCO_NO_QUIERO    = "say_truco_no_quiero"
-
-	TRUCO_COST_NOT_READY = -1
 )
 
 var (
 	validTrucoSequenceCosts = map[string]int{
-		SAY_TRUCO: COST_NOT_READY,
-		fmt.Sprintf("%s,%s", SAY_TRUCO, SAY_QUIERO_RETRUCO):                                                                                              COST_NOT_READY,
-		fmt.Sprintf("%s,%s,%s", SAY_TRUCO, SAY_QUIERO_RETRUCO, SAY_QUIERO_VALE_CUATRO):                                                                   COST_NOT_READY,
+		SAY_TRUCO: 1,
+		fmt.Sprintf("%s,%s", SAY_TRUCO, SAY_QUIERO_RETRUCO):                                                                                              2,
+		fmt.Sprintf("%s,%s,%s", SAY_TRUCO, SAY_QUIERO_RETRUCO, SAY_QUIERO_VALE_CUATRO):                                                                   3,
 		fmt.Sprintf("%s,%s", SAY_TRUCO, SAY_TRUCO_QUIERO):                                                                                                2,
 		fmt.Sprintf("%s,%s,%s", SAY_TRUCO, SAY_TRUCO_QUIERO, SAY_QUIERO_RETRUCO):                                                                         2,
 		fmt.Sprintf("%s,%s,%s", SAY_TRUCO, SAY_QUIERO_RETRUCO, SAY_TRUCO_QUIERO):                                                                         3,
@@ -93,14 +91,8 @@ func (ts *TrucoSequence) IsFinished() bool {
 	return last == SAY_TRUCO_QUIERO || last == SAY_TRUCO_NO_QUIERO
 }
 
-func (ts TrucoSequence) Cost() (int, error) {
-	if !ts.isValid() {
-		return COST_NOT_READY, errInvalidTrucoSequence
-	}
-	if !ts.IsFinished() {
-		return COST_NOT_READY, errUnfinishedTrucoSequence
-	}
-	return validTrucoSequenceCosts[ts.String()], nil
+func (ts TrucoSequence) Cost() int {
+	return validTrucoSequenceCosts[ts.String()]
 }
 
 func (ts TrucoSequence) IsSubsequenceStart() bool {

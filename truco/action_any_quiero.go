@@ -207,10 +207,7 @@ func (a ActionSayTrucoNoQuiero) Run(g *GameState) error {
 	}
 	g.TrucoSequence.AddStep(a.GetName())
 	g.IsRoundFinished = true
-	cost, err := g.TrucoSequence.Cost()
-	if err != nil {
-		return err
-	}
+	cost := g.TrucoSequence.Cost()
 	g.RoundsLog[g.RoundNumber].TrucoPoints = cost
 	g.RoundsLog[g.RoundNumber].TrucoWinnerPlayerID = g.TurnOpponentPlayerID
 	g.Players[g.TurnOpponentPlayerID].Score += cost

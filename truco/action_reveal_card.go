@@ -51,11 +51,7 @@ func (a *ActionRevealCard) Run(g *GameState) error {
 		if g.TrucoSequence.IsEmpty() {
 			score = 1
 		} else {
-			cost, err := g.TrucoSequence.Cost()
-			if err != nil {
-				return err
-			}
-			score = cost
+			score = g.TrucoSequence.Cost()
 		}
 
 		g.Players[g.CardRevealSequence.WinnerPlayerID()].Score += score

@@ -50,5 +50,9 @@ func (a ActionSaySonMejores) Run(g *GameState) error {
 
 func (a ActionSaySonMejores) YieldsTurn(g GameState) bool {
 	// In son_buenas/son_mejores/no_quiero, the turn should go to whoever started the sequence
+	// Unless the game should end due to the points won by this action.
+	if g.Players[a.PlayerID].Score+g.RoundsLog[g.RoundNumber].EnvidoPoints >= MaxPoints {
+		return false
+	}
 	return g.TurnPlayerID != g.EnvidoSequence.StartingPlayerID
 }

@@ -114,8 +114,7 @@ func TestTrucoSequence(t *testing.T) {
 					continue
 				}
 
-				cost, err := gameState.TrucoSequence.Cost()
-				require.NoError(t, err)
+				cost := gameState.TrucoSequence.Cost()
 				assert.Equal(t, step.expectedCostAfterRunning, cost, "at step %v expected cost %v but got %v", i, step.expectedCostAfterRunning, cost)
 			}
 		})
