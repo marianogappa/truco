@@ -1,7 +1,6 @@
 package truco
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -119,8 +118,3 @@ func (ts TrucoSequence) WasAccepted() bool {
 	}
 	return false
 }
-
-var (
-	errInvalidTrucoSequence    = errors.New("invalid truco sequence")
-	errUnfinishedTrucoSequence = errors.New("unfinished truco sequence")
-)

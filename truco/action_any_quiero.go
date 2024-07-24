@@ -1,6 +1,9 @@
 package truco
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 type ActionSayEnvidoNoQuiero struct{ act }
 type ActionSayEnvidoQuiero struct{ act }
@@ -12,8 +15,18 @@ type ActionRevealEnvidoScore struct {
 	act
 	Score int `json:"score"`
 }
-type ActionSayTrucoQuiero struct{ act }
-type ActionSayTrucoNoQuiero struct{ act }
+type ActionSayTrucoQuiero struct {
+	act
+	// RequiresReminder is true if a player ran say_truco and the other player
+	// initiated an envido sequence. This action might seem out of context.
+	RequiresReminder bool `json:"requires_reminder"`
+}
+type ActionSayTrucoNoQuiero struct {
+	act
+	// RequiresReminder is true if a player ran say_truco and the other player
+	// initiated an envido sequence. This action might seem out of context.
+	RequiresReminder bool `json:"requires_reminder"`
+}
 
 func (a ActionSayEnvidoNoQuiero) IsPossible(g GameState) bool {
 	if g.IsRoundFinished {
@@ -236,4 +249,28 @@ func (a ActionRevealEnvidoScore) YieldsTurn(g GameState) bool {
 	// this action doesn't change turn because the round is finished at this point
 	// and the current player must confirm round finished right after this action
 	return false
+}
+
+func (a *ActionSayTrucoQuiero) withRequiresReminder(g GameState) Action {
+	if len(g.RoundsLog[g.RoundNumber].ActionsLog) == 0 {
+		a.RequiresReminder = false
+		return a
+	}
+	lastAction := _deserializeCurrentRoundLastAction(g)
+	// If the last action wasn't a truco action, then an envido sequence
+	// got in the middle of the truco sequence. A reminder is needed.
+	a.RequiresReminder = !slices.Contains[[]string]([]string{SAY_TRUCO, SAY_QUIERO_RETRUCO, SAY_QUIERO_VALE_CUATRO}, lastAction.GetName())
+	return a
+}
+
+func (a *ActionSayTrucoNoQuiero) withRequiresReminder(g GameState) Action {
+	if len(g.RoundsLog[g.RoundNumber].ActionsLog) == 0 {
+		a.RequiresReminder = false
+		return a
+	}
+	lastAction := _deserializeCurrentRoundLastAction(g)
+	// If the last action wasn't a truco action, then an envido sequence
+	// got in the middle of the truco sequence. A reminder is needed.
+	a.RequiresReminder = !slices.Contains[[]string]([]string{SAY_TRUCO, SAY_QUIERO_RETRUCO, SAY_QUIERO_VALE_CUATRO}, lastAction.GetName())
+	return a
 }
