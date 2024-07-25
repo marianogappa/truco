@@ -56,3 +56,7 @@ func (a ActionSaySonMejores) YieldsTurn(g GameState) bool {
 	}
 	return g.TurnPlayerID != g.EnvidoSequence.StartingPlayerID
 }
+
+func (a *ActionSaySonMejores) Enrich(g GameState) {
+	a.Score = g.Players[a.PlayerID].Hand.EnvidoScore()
+}

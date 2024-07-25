@@ -73,3 +73,10 @@ func (a *ActionRevealCard) Run(g *GameState) error {
 func (a ActionRevealCard) YieldsTurn(g GameState) bool {
 	return g.CardRevealSequence.YieldsTurn(g)
 }
+
+func (a *ActionRevealCard) Enrich(g GameState) {
+	if g.canAwardEnvidoPoints(Hand{Revealed: append(g.Players[g.TurnPlayerID].Hand.Revealed, a.Card)}) {
+		a.EnMesa = true
+		a.Score = g.Players[g.TurnPlayerID].Hand.EnvidoScore()
+	}
+}

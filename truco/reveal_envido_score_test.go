@@ -32,11 +32,11 @@ func TestRevealEnvidoScore(t *testing.T) {
 					ignoreAction: true,
 				},
 				{
-					action:       NewActionSayEnvidoScore(25, 0),
+					action:       NewActionSayEnvidoScore(0),
 					ignoreAction: true,
 				},
 				{
-					action:       NewActionSaySonMejores(31, 1),
+					action:       NewActionSaySonMejores(1),
 					ignoreAction: true,
 				},
 				{
@@ -54,7 +54,7 @@ func TestRevealEnvidoScore(t *testing.T) {
 				},
 				// Revealing the envido score is valid
 				{
-					action:                         NewActionRevealEnvidoScore(1, 31),
+					action:                         NewActionRevealEnvidoScore(1),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 1, // doesn't yield turn
 				},
@@ -66,7 +66,7 @@ func TestRevealEnvidoScore(t *testing.T) {
 				},
 				// Revealing the envido score again is invalid
 				{
-					action:          NewActionRevealEnvidoScore(1, 31),
+					action:          NewActionRevealEnvidoScore(1),
 					expectedIsValid: false,
 				},
 			},

@@ -12,10 +12,10 @@ func TestCalculateCardStrength(t *testing.T) {
 		card     truco.Card
 		expected int
 	}{
-		{card: truco.Card{Suit: truco.ESPADA, Number: 1}, expected: 19},
-		{card: truco.Card{Suit: truco.ESPADA, Number: 2}, expected: 14},
-		{card: truco.Card{Suit: truco.ESPADA, Number: 3}, expected: 15},
-		{card: truco.Card{Suit: truco.ESPADA, Number: 4}, expected: 4},
+		{card: truco.Card{Suit: truco.ESPADA, Number: 1}, expected: 15},
+		{card: truco.Card{Suit: truco.ESPADA, Number: 2}, expected: 10},
+		{card: truco.Card{Suit: truco.ESPADA, Number: 3}, expected: 11},
+		{card: truco.Card{Suit: truco.ESPADA, Number: 4}, expected: 0},
 	}
 
 	for _, tc := range testCases {
@@ -24,44 +24,6 @@ func TestCalculateCardStrength(t *testing.T) {
 			t.Errorf("calculateCardStrength(%v) = %d, expected %d", tc.card, actual, tc.expected)
 		}
 	}
-}
-
-func TestCalculateTrucoHandChance(t *testing.T) {
-	testCases := []struct {
-		cards    []truco.Card
-		expected float64
-	}{
-		{
-			cards: []truco.Card{
-				{Suit: truco.ESPADA, Number: 1},
-				{Suit: truco.ESPADA, Number: 7},
-				{Suit: truco.BASTO, Number: 1},
-			},
-			expected: 1,
-		},
-		{
-			cards: []truco.Card{
-				{Suit: truco.BASTO, Number: 4},
-				{Suit: truco.COPA, Number: 4},
-				{Suit: truco.ORO, Number: 4},
-			},
-			expected: 0.0,
-		},
-		// Add more test cases here...
-	}
-
-	for _, tc := range testCases {
-		actual := calculateTrucoHandChance(tc.cards)
-		if !floatEquals(actual, tc.expected, 0.01) {
-			t.Errorf("calculateTrucoHandChance(%v) = %f, expected %f", tc.cards, actual, tc.expected)
-		}
-
-	}
-}
-
-// Function to compare floating-point numbers within a tolerance.
-func floatEquals(a, b, tolerance float64) bool {
-	return math.Abs(a-b) < tolerance
 }
 
 func TestCanBeatCard(t *testing.T) {
@@ -662,7 +624,7 @@ func TestChanceOfWinningTruco(t *testing.T) {
 			expected: 0.733,
 		},
 		{
-			name: "Can't beat the opponent's revealed card, highest remaining card 3: (10+7-8)/(19+18-8)*0.66 = 20.4%% chance of winning",
+			name: "Can't beat the opponent's revealed card, highest remaining card 3: ((10+7-8)/(15+14))^2 = 9.63%% chance of winning",
 			gs: truco.ClientGameState{
 				YourRevealedCards: []truco.Card{},
 				YourUnrevealedCards: []truco.Card{
@@ -674,7 +636,7 @@ func TestChanceOfWinningTruco(t *testing.T) {
 					{Suit: truco.ORO, Number: 7},
 				},
 			},
-			expected: 0.204,
+			expected: 0.096,
 		},
 		{
 			name: "Tie at first revealed card, highest possible remaining card = 100.0%% chance of winning",
@@ -872,22 +834,6 @@ func TestChanceOfWinningTruco(t *testing.T) {
 				TheirRevealedCards: []truco.Card{
 					{Suit: truco.ORO, Number: 3},
 					{Suit: truco.ORO, Number: 2},
-				},
-			},
-			expected: 0.4,
-		},
-		{
-			name: "test",
-			gs: truco.ClientGameState{
-				YourRevealedCards: []truco.Card{
-					{Suit: truco.ESPADA, Number: 10},
-					{Suit: truco.ORO, Number: 1},
-				},
-				YourUnrevealedCards: []truco.Card{
-					{Suit: truco.BASTO, Number: 1},
-				},
-				TheirRevealedCards: []truco.Card{
-					{Suit: truco.COPA, Number: 4},
 				},
 			},
 			expected: 0.4,

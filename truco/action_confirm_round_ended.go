@@ -6,7 +6,7 @@ type ActionConfirmRoundFinished struct {
 
 func (a ActionConfirmRoundFinished) IsPossible(g GameState) bool {
 	return g.IsRoundFinished &&
-		!NewActionRevealEnvidoScore(a.PlayerID, 0).IsPossible(g) &&
+		!NewActionRevealEnvidoScore(a.PlayerID).IsPossible(g) &&
 		!g.RoundFinishedConfirmedPlayerIDs[a.PlayerID]
 }
 

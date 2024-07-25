@@ -304,6 +304,10 @@ type Action interface {
 	GetName() string
 	GetPlayerID() int
 	YieldsTurn(g GameState) bool
+	// Some actions need to be enriched with additional information.
+	// e.g. a say_truco_quiero action is enriched with "RequiresReminder".
+	// GameState.CalculatePossibleActions() must call this method on all actions.
+	Enrich(g GameState)
 
 	fmt.Stringer
 }
@@ -316,41 +320,26 @@ var (
 )
 
 func (g GameState) CalculatePossibleActions() []Action {
-
-	envidoScore := g.Players[g.TurnPlayerID].Hand.EnvidoScore()
-	opponentEnvidoScore := g.Players[g.TurnOpponentPlayerID].Hand.EnvidoScore()
-
 	allActions := []Action{}
-
-	for _, card := range g.Players[g.TurnPlayerID].Hand.Unrevealed {
-		revealCard := NewActionRevealCard(card, g.TurnPlayerID).(*ActionRevealCard)
-		// If revealing a card would award envido points, then set the score in the action
-		if g.canAwardEnvidoPoints(Hand{Revealed: append(g.Players[g.TurnPlayerID].Hand.Revealed, card)}) {
-			revealCard.EnMesa = true
-			revealCard.Score = g.Players[g.TurnPlayerID].Hand.EnvidoScore()
-		}
-		allActions = append(allActions, revealCard)
-	}
-
+	allActions = append(allActions, NewActionsRevealCards(g.TurnPlayerID, g)...)
 	allActions = append(allActions,
 		NewActionSayEnvido(g.TurnPlayerID),
 		NewActionSayRealEnvido(g.TurnPlayerID),
 		NewActionSayFaltaEnvido(g.TurnPlayerID),
 		NewActionSayEnvidoQuiero(g.TurnPlayerID),
-		NewActionSayEnvidoScore(envidoScore, g.TurnPlayerID),
+		NewActionSayEnvidoScore(g.TurnPlayerID),
 		NewActionSayEnvidoNoQuiero(g.TurnPlayerID),
 		NewActionSayTruco(g.TurnPlayerID),
-		NewActionSayTrucoQuiero(g.TurnPlayerID).(*ActionSayTrucoQuiero).withRequiresReminder(g),
-		NewActionSayTrucoNoQuiero(g.TurnPlayerID).(*ActionSayTrucoNoQuiero).withRequiresReminder(g),
+		NewActionSayTrucoQuiero(g.TurnPlayerID),
+		NewActionSayTrucoNoQuiero(g.TurnPlayerID),
 		NewActionSayQuieroRetruco(g.TurnPlayerID),
 		NewActionSayQuieroValeCuatro(g.TurnPlayerID),
 		NewActionSaySonBuenas(g.TurnPlayerID),
-		NewActionSaySonMejores(envidoScore, g.TurnPlayerID),
+		NewActionSaySonMejores(g.TurnPlayerID),
 		NewActionSayMeVoyAlMazo(g.TurnPlayerID),
 		NewActionConfirmRoundFinished(g.TurnPlayerID),
 		NewActionConfirmRoundFinished(g.TurnOpponentPlayerID),
-		NewActionRevealEnvidoScore(g.TurnPlayerID, envidoScore),
-		NewActionRevealEnvidoScore(g.TurnOpponentPlayerID, opponentEnvidoScore),
+		NewActionRevealEnvidoScore(g.TurnPlayerID),
 	)
 
 	// The reveal_envido_score action happens in two cases:
@@ -358,16 +347,15 @@ func (g GameState) CalculatePossibleActions() []Action {
 	// 2. Round is going on, but player would win the game by revealing the score
 	//
 	// In both cases, this should be the only action available. So don't check others.
-	actionRevealEnvidoScore := NewActionRevealEnvidoScore(g.TurnPlayerID, envidoScore)
+	actionRevealEnvidoScore := NewActionRevealEnvidoScore(g.TurnPlayerID)
+	actionRevealEnvidoScore.Enrich(g)
 	if actionRevealEnvidoScore.IsPossible(g) {
-		allActions = []Action{
-			actionRevealEnvidoScore,
-			NewActionRevealEnvidoScore(g.TurnOpponentPlayerID, opponentEnvidoScore),
-		}
+		allActions = []Action{actionRevealEnvidoScore}
 	}
 
 	possibleActions := []Action{}
 	for _, action := range allActions {
+		action.Enrich(g)
 		if action.IsPossible(g) {
 			possibleActions = append(possibleActions, action)
 		}

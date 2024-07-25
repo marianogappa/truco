@@ -87,8 +87,8 @@ func (a ActionSayTrucoQuiero) IsPossible(g GameState) bool {
 		me                       = a.PlayerID
 		isEnvidoQuieroPossible   = NewActionSayEnvidoQuiero(me).IsPossible(g)
 		isSonBuenasPossible      = NewActionSaySonBuenas(me).IsPossible(g)
-		isSonMejoresPossible     = NewActionSaySonMejores(0, me).IsPossible(g)
-		isSayEnvidoScorePossible = NewActionSayEnvidoScore(0, me).IsPossible(g)
+		isSonMejoresPossible     = NewActionSaySonMejores(me).IsPossible(g)
+		isSayEnvidoScorePossible = NewActionSayEnvidoScore(me).IsPossible(g)
 	)
 	if isEnvidoQuieroPossible || isSonBuenasPossible || isSonMejoresPossible || isSayEnvidoScorePossible {
 		return false
@@ -107,8 +107,8 @@ func (a ActionSayTrucoNoQuiero) IsPossible(g GameState) bool {
 		me                       = a.PlayerID
 		isEnvidoQuieroPossible   = NewActionSayEnvidoQuiero(me).IsPossible(g)
 		isSonBuenasPossible      = NewActionSaySonBuenas(me).IsPossible(g)
-		isSonMejoresPossible     = NewActionSaySonMejores(0, me).IsPossible(g)
-		isSayEnvidoScorePossible = NewActionSayEnvidoScore(0, me).IsPossible(g)
+		isSonMejoresPossible     = NewActionSaySonMejores(me).IsPossible(g)
+		isSayEnvidoScorePossible = NewActionSayEnvidoScore(me).IsPossible(g)
 	)
 	if isEnvidoQuieroPossible || isSonBuenasPossible || isSonMejoresPossible || isSayEnvidoScorePossible {
 		return false
@@ -251,26 +251,28 @@ func (a ActionRevealEnvidoScore) YieldsTurn(g GameState) bool {
 	return false
 }
 
-func (a *ActionSayTrucoQuiero) withRequiresReminder(g GameState) Action {
-	if len(g.RoundsLog[g.RoundNumber].ActionsLog) == 0 {
-		a.RequiresReminder = false
-		return a
-	}
-	lastAction := _deserializeCurrentRoundLastAction(g)
-	// If the last action wasn't a truco action, then an envido sequence
-	// got in the middle of the truco sequence. A reminder is needed.
-	a.RequiresReminder = !slices.Contains[[]string]([]string{SAY_TRUCO, SAY_QUIERO_RETRUCO, SAY_QUIERO_VALE_CUATRO}, lastAction.GetName())
-	return a
+func (a *ActionSayTrucoQuiero) Enrich(g GameState) {
+	a.RequiresReminder = _doesTrucoActionRequireReminder(g)
 }
 
-func (a *ActionSayTrucoNoQuiero) withRequiresReminder(g GameState) Action {
+func (a *ActionSayTrucoNoQuiero) Enrich(g GameState) {
+	a.RequiresReminder = _doesTrucoActionRequireReminder(g)
+}
+
+func _doesTrucoActionRequireReminder(g GameState) bool {
 	if len(g.RoundsLog[g.RoundNumber].ActionsLog) == 0 {
-		a.RequiresReminder = false
-		return a
+		return false
 	}
 	lastAction := _deserializeCurrentRoundLastAction(g)
 	// If the last action wasn't a truco action, then an envido sequence
 	// got in the middle of the truco sequence. A reminder is needed.
-	a.RequiresReminder = !slices.Contains[[]string]([]string{SAY_TRUCO, SAY_QUIERO_RETRUCO, SAY_QUIERO_VALE_CUATRO}, lastAction.GetName())
-	return a
+	return !slices.Contains[[]string]([]string{SAY_TRUCO, SAY_QUIERO_RETRUCO, SAY_QUIERO_VALE_CUATRO}, lastAction.GetName())
+}
+
+func (a *ActionSayEnvidoScore) Enrich(g GameState) {
+	a.Score = g.Players[a.PlayerID].Hand.EnvidoScore()
+}
+
+func (a *ActionRevealEnvidoScore) Enrich(g GameState) {
+	a.Score = g.Players[a.PlayerID].Hand.EnvidoScore()
 }

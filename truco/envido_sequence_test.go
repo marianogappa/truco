@@ -53,7 +53,7 @@ func TestEnvidoSequence(t *testing.T) {
 			name: "cannot start with son_mejores",
 			steps: []testStep{
 				{
-					action:          NewActionSaySonMejores(10, 0),
+					action:          NewActionSaySonMejores(0),
 					expectedIsValid: false,
 				},
 			},
@@ -74,7 +74,7 @@ func TestEnvidoSequence(t *testing.T) {
 			},
 		},
 		{
-			name: "basic envido finished sequence with son buenas",
+			name: "basic envido finished sequence with son mejores",
 			steps: []testStep{
 				{
 					action:                         NewActionSayEnvido(0),
@@ -87,7 +87,12 @@ func TestEnvidoSequence(t *testing.T) {
 					expectedPlayerTurnAfterRunning: 0,
 				},
 				{
-					action:                         NewActionSaySonBuenas(0),
+					action:                         NewActionSayEnvidoScore(0),
+					expectedIsValid:                true,
+					expectedPlayerTurnAfterRunning: 1,
+				},
+				{
+					action:                         NewActionSaySonMejores(1),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 0, // doesn't yield turn because envido is over, so player who started gets to play
 					expectedIsFinishedAfterRunning: true,
@@ -110,10 +115,15 @@ func TestEnvidoSequence(t *testing.T) {
 				{
 					action:                         NewActionSayEnvidoQuiero(0),
 					expectedIsValid:                true,
+					expectedPlayerTurnAfterRunning: 0,
+				},
+				{
+					action:                         NewActionSayEnvidoScore(0),
+					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 1,
 				},
 				{
-					action:                         NewActionSaySonMejores(31, 1),
+					action:                         NewActionSaySonMejores(1),
 					expectedIsValid:                true,
 					expectedPlayerTurnAfterRunning: 1, // doesn't yield turn because envido is over, so player who started gets to play
 					expectedIsFinishedAfterRunning: true,
@@ -145,8 +155,9 @@ func TestEnvidoSequence(t *testing.T) {
 					}
 				}
 
+				step.action.Enrich(*gameState)
 				err := gameState.RunAction(step.action)
-				require.NoError(t, err)
+				require.NoError(t, err, "at step %v", i)
 
 				if step.ignoreAction {
 					continue

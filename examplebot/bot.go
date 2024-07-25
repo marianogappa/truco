@@ -62,13 +62,13 @@ func calculateEnvidoScore(gs truco.ClientGameState) int {
 
 func calculateCardStrength(gs truco.Card) int {
 	specialValues := map[truco.Card]int{
-		{Suit: truco.ESPADA, Number: 1}: 19,
-		{Suit: truco.BASTO, Number: 1}:  18,
-		{Suit: truco.ESPADA, Number: 7}: 17,
-		{Suit: truco.ORO, Number: 7}:    16,
+		{Suit: truco.ESPADA, Number: 1}: 15,
+		{Suit: truco.BASTO, Number: 1}:  14,
+		{Suit: truco.ESPADA, Number: 7}: 13,
+		{Suit: truco.ORO, Number: 7}:    12,
 	}
 	if _, ok := specialValues[gs]; ok {
-		return specialValues[gs] - 4
+		return specialValues[gs]
 	}
 	if gs.Number <= 3 {
 		return gs.Number + 12 - 4
@@ -82,14 +82,6 @@ func faceoffResults(gs truco.ClientGameState) []int {
 		results = append(results, gs.YourRevealedCards[i].CompareTrucoScore(gs.TheirRevealedCards[i]))
 	}
 	return results
-}
-
-func calculateTrucoHandChance(cards []truco.Card) float64 {
-	sum := 0.0
-	for _, card := range cards {
-		sum += float64(calculateCardStrength(card))
-	}
-	return sum / (15 + 14 + 13)
 }
 
 func canAnyEnvido(actions map[string]truco.Action) bool {
@@ -299,13 +291,7 @@ func lowestCardThatBeats(card truco.Card, cards []truco.Card) truco.Card {
 }
 
 func cardsChance(cards []truco.Card) float64 {
-	divisor := float64(19.0)
-	if len(cards) == 2 {
-		divisor = 15.0 + 14.0
-	}
-	if len(cards) == 3 {
-		divisor = 15.0 + 14.0 + 13.0
-	}
+	divisor := float64([]float64{1, 15.0, 15.0 + 14.0, 15.0 + 14.0 + 13.0}[len(cards)])
 	sum := 0.0
 	for _, card := range cards {
 		sum += float64(calculateCardStrength(card))
@@ -575,7 +561,7 @@ func sonBuenas(gs truco.ClientGameState) truco.Action {
 	return truco.NewActionSaySonBuenas(gs.YouPlayerID)
 }
 func sonMejores(gs truco.ClientGameState) truco.Action {
-	return truco.NewActionSaySonMejores(0, gs.YouPlayerID)
+	return truco.NewActionSaySonMejores(gs.YouPlayerID)
 }
 func envidoNoQuiero(gs truco.ClientGameState) truco.Action {
 	return truco.NewActionSayEnvidoNoQuiero(gs.YouPlayerID)

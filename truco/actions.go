@@ -20,6 +20,9 @@ func (a act) GetPlayerID() int {
 	return a.PlayerID
 }
 
+// By default, actions don't need to be enriched.
+func (a act) Enrich(g GameState) {}
+
 func (a act) String() string {
 	name := strings.ReplaceAll(strings.TrimPrefix(a.Name, "say_"), "_", " ")
 	return fmt.Sprintf("Player %v says %v", a.PlayerID, name)
@@ -49,8 +52,8 @@ func NewActionSayEnvidoQuiero(playerID int) Action {
 	return &ActionSayEnvidoQuiero{act: act{Name: SAY_ENVIDO_QUIERO, PlayerID: playerID}}
 }
 
-func NewActionSayEnvidoScore(score int, playerID int) Action {
-	return &ActionSayEnvidoScore{act: act{Name: SAY_ENVIDO_SCORE, PlayerID: playerID}, Score: score}
+func NewActionSayEnvidoScore(playerID int) Action {
+	return &ActionSayEnvidoScore{act: act{Name: SAY_ENVIDO_SCORE, PlayerID: playerID}}
 }
 
 func NewActionSayTrucoQuiero(playerID int) Action {
@@ -77,12 +80,20 @@ func NewActionSaySonBuenas(playerID int) Action {
 	return &ActionSaySonBuenas{act: act{Name: SAY_SON_BUENAS, PlayerID: playerID}}
 }
 
-func NewActionSaySonMejores(score int, playerID int) Action {
-	return &ActionSaySonMejores{act: act{Name: SAY_SON_MEJORES, PlayerID: playerID}, Score: score}
+func NewActionSaySonMejores(playerID int) Action {
+	return &ActionSaySonMejores{act: act{Name: SAY_SON_MEJORES, PlayerID: playerID}}
 }
 
 func NewActionRevealCard(card Card, playerID int) Action {
 	return &ActionRevealCard{act: act{Name: REVEAL_CARD, PlayerID: playerID}, Card: card}
+}
+
+func NewActionsRevealCards(playerID int, gameState GameState) []Action {
+	actions := []Action{}
+	for _, card := range gameState.Players[playerID].Hand.Unrevealed {
+		actions = append(actions, NewActionRevealCard(card, playerID))
+	}
+	return actions
 }
 
 func NewActionSayMeVoyAlMazo(playerID int) Action {
@@ -93,8 +104,8 @@ func NewActionConfirmRoundFinished(playerID int) Action {
 	return &ActionConfirmRoundFinished{act: act{Name: CONFIRM_ROUND_FINISHED, PlayerID: playerID}}
 }
 
-func NewActionRevealEnvidoScore(playerID int, score int) Action {
-	return &ActionRevealEnvidoScore{act: act{Name: REVEAL_ENVIDO_SCORE, PlayerID: playerID}, Score: score}
+func NewActionRevealEnvidoScore(playerID int) Action {
+	return &ActionRevealEnvidoScore{act: act{Name: REVEAL_ENVIDO_SCORE, PlayerID: playerID}}
 }
 
 func (a ActionSaySonMejores) String() string {
