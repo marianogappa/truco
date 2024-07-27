@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 
 	"math/rand"
 
@@ -149,10 +150,42 @@ func sortPossibleEnvidoActions(gs truco.ClientGameState) []truco.Action {
 			actions = append(actions, action)
 		}
 	}
+
+	// Sort actions based on their cost
+	// TODO: this is broken at the moment because the cost doesn't work well
+	sort.Slice(actions, func(i, j int) bool {
+		return _getEnvidoActionQuieroCost(actions[i]) < _getEnvidoActionQuieroCost(actions[j])
+	})
+
 	return actions
 }
 
+func _getEnvidoActionQuieroCost(action truco.Action) int {
+	switch a := action.(type) {
+	case *truco.ActionSayEnvidoQuiero:
+		return a.Cost
+	case *truco.ActionSayEnvido:
+		return a.QuieroCost
+	case *truco.ActionSayRealEnvido:
+		return a.QuieroCost
+	case *truco.ActionSayFaltaEnvido:
+		return a.QuieroCost
+	default:
+		panic("this code should be unreachable! bug in _getEnvidoActionCost! please report this bug.")
+	}
+}
+
 func shouldAnyEnvido(gs truco.ClientGameState, aggresiveness string, log func(string, ...any)) bool {
+	// if "no quiero" is possible and saying no quiero means losing, return true
+	possible := possibleActionsMap(gs)
+	noQuieroActions := filter(possible, truco.NewActionSayEnvidoNoQuiero(gs.YouPlayerID))
+	if len(noQuieroActions) > 0 {
+		cost := noQuieroActions[0].(*truco.ActionSayEnvidoNoQuiero).Cost
+		if gs.TheirScore+cost >= gs.RuleMaxPoints {
+			return true
+		}
+	}
+
 	shouldMap := map[string]int{
 		"low":    29,
 		"normal": 27,
@@ -451,6 +484,16 @@ func chooseTrucoAction(gs truco.ClientGameState, aggresiveness string) truco.Act
 }
 
 func shouldAcceptTruco(gs truco.ClientGameState, aggresiveness string, log func(string, ...any)) bool {
+	// if "no quiero" is possible and saying no quiero means losing, return true
+	possible := possibleActionsMap(gs)
+	noQuieroActions := filter(possible, truco.NewActionSayTrucoNoQuiero(gs.YouPlayerID))
+	if len(noQuieroActions) > 0 {
+		cost := noQuieroActions[0].(*truco.ActionSayTrucoNoQuiero).Cost
+		if gs.TheirScore+cost >= gs.RuleMaxPoints {
+			return true
+		}
+	}
+
 	shouldMap := map[string]float64{
 		"low":    0.55,
 		"normal": 0.5,
@@ -583,17 +626,20 @@ func meVoy(gs truco.ClientGameState) truco.Action {
 }
 
 func (m Bot) ChooseAction(gs truco.ClientGameState) truco.Action {
-	actions := possibleActionsMap(gs)
-	for _, action := range actions {
-		m.log("possible action: %v", action)
-	}
-
 	if len(gs.PossibleActions) == 0 {
 		m.log("there are no actions left.")
 		return nil
 	}
+	if len(gs.PossibleActions) == 1 {
+		m.log("there was only one action: %v", string(gs.PossibleActions[0]))
+		return _deserializeActions(gs.PossibleActions)[0]
+	}
 
 	// If there's only a say_son_buenas, say_son_mejores or a single action, choose it
+	actions := possibleActionsMap(gs)
+	for _, action := range actions {
+		m.log("possible action: %v", action)
+	}
 	sonBuenasActions := filter(actions, sonBuenas(gs))
 	if len(sonBuenasActions) > 0 {
 		m.log("I have to say son buenas.")
@@ -603,10 +649,6 @@ func (m Bot) ChooseAction(gs truco.ClientGameState) truco.Action {
 	if len(sonMejoresActions) > 0 {
 		m.log("I have to say son mejores.")
 		return sonMejoresActions[0]
-	}
-	if len(gs.PossibleActions) == 1 {
-		m.log("there was only one action: %v", string(gs.PossibleActions[0]))
-		return _deserializeActions(gs.PossibleActions)[0]
 	}
 
 	var (

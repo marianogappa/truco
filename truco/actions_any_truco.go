@@ -1,16 +1,34 @@
 package truco
 
-type ActionSayTruco struct{ act }
-type ActionSayQuieroRetruco struct{ act }
-type ActionSayQuieroValeCuatro struct{ act }
+type ActionSayTruco struct {
+	act
+	NoQuieroCost int `json:"noQuieroCost"`
+	QuieroCost   int `json:"quieroCost"`
+}
+type ActionSayQuieroRetruco struct {
+	act
+	NoQuieroCost int `json:"noQuieroCost"`
+	QuieroCost   int `json:"quieroCost"`
+}
+type ActionSayQuieroValeCuatro struct {
+	act
+	NoQuieroCost int `json:"noQuieroCost"`
+	QuieroCost   int `json:"quieroCost"`
+}
 
-func (a ActionSayTruco) IsPossible(g GameState) bool            { return g.AnyTrucoActionIsPossible(a) }
-func (a ActionSayQuieroRetruco) IsPossible(g GameState) bool    { return g.AnyTrucoActionIsPossible(a) }
-func (a ActionSayQuieroValeCuatro) IsPossible(g GameState) bool { return g.AnyTrucoActionIsPossible(a) }
+func (a ActionSayTruco) IsPossible(g GameState) bool         { return g.AnyTrucoActionIsPossible(&a) }
+func (a ActionSayQuieroRetruco) IsPossible(g GameState) bool { return g.AnyTrucoActionIsPossible(&a) }
+func (a ActionSayQuieroValeCuatro) IsPossible(g GameState) bool {
+	return g.AnyTrucoActionIsPossible(&a)
+}
 
-func (a ActionSayTruco) Run(g *GameState) error            { return g.AnyTrucoActionRunAction(a) }
-func (a ActionSayQuieroRetruco) Run(g *GameState) error    { return g.AnyTrucoActionRunAction(a) }
-func (a ActionSayQuieroValeCuatro) Run(g *GameState) error { return g.AnyTrucoActionRunAction(a) }
+func (a ActionSayTruco) Run(g *GameState) error            { return g.AnyTrucoActionRunAction(&a) }
+func (a ActionSayQuieroRetruco) Run(g *GameState) error    { return g.AnyTrucoActionRunAction(&a) }
+func (a ActionSayQuieroValeCuatro) Run(g *GameState) error { return g.AnyTrucoActionRunAction(&a) }
+
+func (a *ActionSayTruco) Enrich(g GameState)            { g.AnyTrucoActionTypeEnrich(a) }
+func (a *ActionSayQuieroRetruco) Enrich(g GameState)    { g.AnyTrucoActionTypeEnrich(a) }
+func (a *ActionSayQuieroValeCuatro) Enrich(g GameState) { g.AnyTrucoActionTypeEnrich(a) }
 
 func (g GameState) AnyTrucoActionIsPossible(a Action) bool {
 	if g.IsRoundFinished {
@@ -46,4 +64,28 @@ func (g *GameState) AnyTrucoActionRunAction(at Action) error {
 	}
 
 	return nil
+}
+
+func (g GameState) AnyTrucoActionTypeEnrich(a Action) {
+	if !a.IsPossible(g) {
+		return
+	}
+	var (
+		quieroSeq, _   = g.TrucoSequence.WithStep(SAY_TRUCO_QUIERO)
+		quieroCost     = quieroSeq.Cost()
+		noQuieroSeq, _ = g.TrucoSequence.WithStep(SAY_TRUCO_NO_QUIERO)
+		noQuieroCost   = noQuieroSeq.Cost()
+	)
+
+	switch a.GetName() {
+	case SAY_TRUCO:
+		a.(*ActionSayTruco).QuieroCost = quieroCost
+		a.(*ActionSayTruco).NoQuieroCost = noQuieroCost
+	case SAY_QUIERO_RETRUCO:
+		a.(*ActionSayQuieroRetruco).QuieroCost = quieroCost
+		a.(*ActionSayQuieroRetruco).NoQuieroCost = noQuieroCost
+	case SAY_QUIERO_VALE_CUATRO:
+		a.(*ActionSayQuieroValeCuatro).QuieroCost = quieroCost
+		a.(*ActionSayQuieroValeCuatro).NoQuieroCost = noQuieroCost
+	}
 }

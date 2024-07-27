@@ -24,8 +24,27 @@ var (
 	bot   truco.Bot
 )
 
+type rules struct {
+	MaxPoints     int  `json:"maxPoints"`
+	IsFlorEnabled bool `json:"isFlorEnabled"`
+}
+
 func trucoNew(this js.Value, p []js.Value) interface{} {
-	state = truco.New()
+	jsonBytes := make([]byte, p[0].Length())
+	js.CopyBytesToGo(jsonBytes, p[0])
+	var r rules
+	// ignore rules if unmarshal fails
+	_ = json.Unmarshal(jsonBytes, &r)
+
+	opts := []func(*truco.GameState){}
+	if r.MaxPoints > 0 {
+		opts = append(opts, truco.WithMaxPoints(r.MaxPoints))
+	}
+	if r.IsFlorEnabled {
+		opts = append(opts, truco.WithFlorEnabled(r.IsFlorEnabled))
+	}
+	state = truco.New(opts...)
+
 	bot = examplebot.New()
 
 	nbs, err := json.Marshal(state.ToClientGameState(0))

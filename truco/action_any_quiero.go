@@ -5,8 +5,14 @@ import (
 	"slices"
 )
 
-type ActionSayEnvidoNoQuiero struct{ act }
-type ActionSayEnvidoQuiero struct{ act }
+type ActionSayEnvidoNoQuiero struct {
+	act
+	Cost int `json:"cost"`
+}
+type ActionSayEnvidoQuiero struct {
+	act
+	Cost int `json:"cost"`
+}
 type ActionSayEnvidoScore struct {
 	act
 	Score int `json:"score"`
@@ -17,12 +23,14 @@ type ActionRevealEnvidoScore struct {
 }
 type ActionSayTrucoQuiero struct {
 	act
+	Cost int `json:"cost"`
 	// RequiresReminder is true if a player ran say_truco and the other player
 	// initiated an envido sequence. This action might seem out of context.
 	RequiresReminder bool `json:"requires_reminder"`
 }
 type ActionSayTrucoNoQuiero struct {
 	act
+	Cost int `json:"cost"`
 	// RequiresReminder is true if a player ran say_truco and the other player
 	// initiated an envido sequence. This action might seem out of context.
 	RequiresReminder bool `json:"requires_reminder"`
@@ -70,7 +78,7 @@ func (a ActionRevealEnvidoScore) IsPossible(g GameState) bool {
 	if roundLog.EnvidoWinnerPlayerID != a.PlayerID {
 		return false
 	}
-	if !g.IsRoundFinished && g.Players[a.PlayerID].Score+roundLog.EnvidoPoints < MaxPoints {
+	if !g.IsRoundFinished && g.Players[a.PlayerID].Score+roundLog.EnvidoPoints < g.RuleMaxPoints {
 		return false
 	}
 	revealedHand := Hand{Revealed: g.Players[a.PlayerID].Hand.Revealed}
@@ -123,7 +131,7 @@ func (a ActionSayEnvidoNoQuiero) Run(g *GameState) error {
 	}
 	g.EnvidoSequence.AddStep(a.GetName())
 	g.IsEnvidoFinished = true
-	cost, err := g.EnvidoSequence.Cost(g.Players[g.TurnPlayerID].Score, g.Players[g.TurnOpponentPlayerID].Score)
+	cost, err := g.EnvidoSequence.Cost(g.RuleMaxPoints, g.Players[g.TurnPlayerID].Score, g.Players[g.TurnOpponentPlayerID].Score)
 	if err != nil {
 		return err
 	}
@@ -253,10 +261,42 @@ func (a ActionRevealEnvidoScore) YieldsTurn(g GameState) bool {
 
 func (a *ActionSayTrucoQuiero) Enrich(g GameState) {
 	a.RequiresReminder = _doesTrucoActionRequireReminder(g)
+	quieroSeq, _ := g.TrucoSequence.WithStep(SAY_TRUCO_QUIERO)
+	quieroCost := quieroSeq.Cost()
+	a.Cost = quieroCost
 }
 
 func (a *ActionSayTrucoNoQuiero) Enrich(g GameState) {
 	a.RequiresReminder = _doesTrucoActionRequireReminder(g)
+	noQuieroSeq, _ := g.TrucoSequence.WithStep(SAY_TRUCO_NO_QUIERO)
+	quieroCost := noQuieroSeq.Cost()
+	a.Cost = quieroCost
+}
+
+func (a *ActionSayEnvidoQuiero) Enrich(g GameState) {
+	if !a.IsPossible(g) {
+		return
+	}
+	var (
+		youScore      = g.Players[a.GetPlayerID()].Score
+		theirScore    = g.Players[g.OpponentOf(a.GetPlayerID())].Score
+		quieroSeq, _  = g.EnvidoSequence.WithStep(SAY_ENVIDO_QUIERO)
+		quieroCost, _ = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
+	)
+	a.Cost = quieroCost
+}
+
+func (a *ActionSayEnvidoNoQuiero) Enrich(g GameState) {
+	if !a.IsPossible(g) {
+		return
+	}
+	var (
+		youScore        = g.Players[a.GetPlayerID()].Score
+		theirScore      = g.Players[g.OpponentOf(a.GetPlayerID())].Score
+		noQuieroSeq, _  = g.EnvidoSequence.WithStep(SAY_ENVIDO_NO_QUIERO)
+		noQuieroCost, _ = noQuieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
+	)
+	a.Cost = noQuieroCost
 }
 
 func _doesTrucoActionRequireReminder(g GameState) bool {

@@ -37,7 +37,7 @@ func (a ActionSaySonMejores) Run(g *GameState) error {
 		return errActionNotPossible
 	}
 	g.EnvidoSequence.AddStep(a.GetName())
-	cost, err := g.EnvidoSequence.Cost(g.Players[g.TurnPlayerID].Score, g.Players[g.TurnOpponentPlayerID].Score)
+	cost, err := g.EnvidoSequence.Cost(g.RuleMaxPoints, g.Players[g.TurnPlayerID].Score, g.Players[g.TurnOpponentPlayerID].Score)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (a ActionSaySonMejores) Run(g *GameState) error {
 func (a ActionSaySonMejores) YieldsTurn(g GameState) bool {
 	// In son_buenas/son_mejores/no_quiero, the turn should go to whoever started the sequence
 	// Unless the game should end due to the points won by this action.
-	if g.Players[a.PlayerID].Score+g.RoundsLog[g.RoundNumber].EnvidoPoints >= MaxPoints {
+	if g.Players[a.PlayerID].Score+g.RoundsLog[g.RoundNumber].EnvidoPoints >= g.RuleMaxPoints {
 		return false
 	}
 	return g.TurnPlayerID != g.EnvidoSequence.StartingPlayerID

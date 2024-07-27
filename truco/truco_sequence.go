@@ -1,6 +1,7 @@
 package truco
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -110,6 +111,23 @@ func (ts TrucoSequence) IsSubsequenceStart() bool {
 	return false
 }
 
+func (es TrucoSequence) Clone() *TrucoSequence {
+	return &TrucoSequence{
+		Sequence:            append([]string{}, es.Sequence...),
+		StartingPlayerID:    es.StartingPlayerID,
+		QuieroOwnerPlayerID: es.QuieroOwnerPlayerID,
+	}
+}
+
+func (es TrucoSequence) WithStep(step string) (TrucoSequence, error) {
+	if !es.CanAddStep(step) {
+		return es, errInvalidTrucoSequence
+	}
+	newEs := es.Clone()
+	newEs.AddStep(step)
+	return *newEs, nil
+}
+
 func (ts TrucoSequence) WasAccepted() bool {
 	for _, step := range ts.Sequence {
 		if step == SAY_TRUCO_QUIERO {
@@ -118,3 +136,7 @@ func (ts TrucoSequence) WasAccepted() bool {
 	}
 	return false
 }
+
+var (
+	errInvalidTrucoSequence = errors.New("invalid truco sequence")
+)

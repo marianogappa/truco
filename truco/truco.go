@@ -7,9 +7,9 @@ import (
 	"log"
 )
 
-// MaxPoints is the points a player must reach to win the game.
+// DefaultMaxPoints is the points a player must reach to win the game.
 // It is set as a const in case support for 15 points games is needed in the future.
-const MaxPoints = 30
+const DefaultMaxPoints = 30
 
 // GameState represents the state of a Truco game. It is the central struct to this package.
 //
@@ -91,6 +91,9 @@ type GameState struct {
 
 	RoundFinishedConfirmedPlayerIDs map[int]bool `json:"roundFinishedConfirmedPlayerIDs"`
 
+	RuleMaxPoints     int  `json:"ruleMaxPoints"`
+	RuleIsFlorEnabled bool `json:"ruleIsFlorEnabled"`
+
 	deck *deck `json:"-"`
 }
 
@@ -134,6 +137,20 @@ type ActionLog struct {
 	Action json.RawMessage `json:"action"`
 }
 
+// WithMaxPoints sets the maximum points required to win the game.
+func WithMaxPoints(maxPoints int) func(*GameState) {
+	return func(gs *GameState) {
+		gs.RuleMaxPoints = maxPoints
+	}
+}
+
+// WithFlorEnabled sets whether the "flor" rule is enabled.
+func WithFlorEnabled(isFlorEnabled bool) func(*GameState) {
+	return func(gs *GameState) {
+		gs.RuleIsFlorEnabled = isFlorEnabled
+	}
+}
+
 func New(opts ...func(*GameState)) *GameState {
 	gs := &GameState{
 		RoundTurnPlayerID: 1,
@@ -142,10 +159,12 @@ func New(opts ...func(*GameState)) *GameState {
 			0: {Hand: nil, Score: 0},
 			1: {Hand: nil, Score: 0},
 		},
-		IsGameEnded:    false,
-		WinnerPlayerID: -1,
-		RoundsLog:      []*RoundLog{{}}, // initialised with an empty round to be 1-indexed
-		deck:           newDeck(),
+		IsGameEnded:       false,
+		WinnerPlayerID:    -1,
+		RoundsLog:         []*RoundLog{{}}, // initialised with an empty round to be 1-indexed
+		deck:              newDeck(),
+		RuleMaxPoints:     DefaultMaxPoints,
+		RuleIsFlorEnabled: false,
 	}
 
 	for _, opt := range opts {
@@ -233,8 +252,8 @@ func (g *GameState) RunAction(action Action) error {
 
 	// Handle end of game due to score
 	for playerID := range g.Players {
-		if g.Players[playerID].Score >= MaxPoints {
-			g.Players[playerID].Score = MaxPoints
+		if g.Players[playerID].Score >= g.RuleMaxPoints {
+			g.Players[playerID].Score = g.RuleMaxPoints
 			g.IsGameEnded = true
 			g.WinnerPlayerID = playerID
 		}
@@ -474,6 +493,8 @@ func (g *GameState) ToClientGameState(youPlayerID int) ClientGameState {
 		WasTrucoAccepted:            g.TrucoSequence.WasAccepted(),
 		YourDisplayUnrevealedCards:  g.Players[youPlayerID].Hand.prepareDisplayUnrevealedCards(true),
 		TheirDisplayUnrevealedCards: g.Players[themPlayerID].Hand.prepareDisplayUnrevealedCards(false),
+		RuleMaxPoints:               g.RuleMaxPoints,
+		RuleIsFlorEnabled:           g.RuleIsFlorEnabled,
 	}
 
 	if len(g.RoundsLog[g.RoundNumber].ActionsLog) > 0 {
@@ -553,6 +574,9 @@ type ClientGameState struct {
 	// just started, this will be nil. Clients typically want to user this to show the current player
 	// what the opponent just did.
 	LastActionLog *ActionLog `json:"lastActionLog"`
+
+	RuleMaxPoints     int  `json:"ruleMaxPoints"`
+	RuleIsFlorEnabled bool `json:"ruleIsFlorEnabled"`
 }
 
 type Bot interface {

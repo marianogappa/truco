@@ -38,7 +38,7 @@ func (a ActionSaySonBuenas) Run(g *GameState) error {
 		return errActionNotPossible
 	}
 	g.EnvidoSequence.AddStep(a.GetName())
-	cost, err := g.EnvidoSequence.Cost(g.Players[g.TurnPlayerID].Score, g.Players[g.TurnOpponentPlayerID].Score)
+	cost, err := g.EnvidoSequence.Cost(g.RuleMaxPoints, g.Players[g.TurnPlayerID].Score, g.Players[g.TurnOpponentPlayerID].Score)
 	if err != nil {
 		return err
 	}

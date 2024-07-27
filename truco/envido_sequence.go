@@ -140,16 +140,16 @@ func (es *EnvidoSequence) IsFinished() bool {
 	return last == SAY_SON_BUENAS || last == SAY_SON_MEJORES || last == SAY_ENVIDO_NO_QUIERO
 }
 
-func (es EnvidoSequence) Cost(currentPlayerScore int, otherPlayerScore int) (int, error) {
+func (es EnvidoSequence) Cost(maxPoints, currentPlayerScore, otherPlayerScore int) (int, error) {
 	if !es.isValid() {
 		return COST_NOT_READY, errInvalidEnvidoSequence
 	}
-	if !es.IsFinished() {
-		return COST_NOT_READY, errUnfinishedEnvidoSequence
-	}
 	cost := validEnvidoSequenceCosts[es.String()]
 	if cost == COST_FALTA_ENVIDO {
-		return calculateFaltaEnvidoCost(currentPlayerScore, otherPlayerScore), nil
+		return calculateFaltaEnvidoCost(maxPoints, currentPlayerScore, otherPlayerScore), nil
+	}
+	if !es.IsFinished() {
+		return cost, errUnfinishedEnvidoSequence
 	}
 	return cost, nil
 }
@@ -163,7 +163,29 @@ func (es EnvidoSequence) WasAccepted() bool {
 	return false
 }
 
-func calculateFaltaEnvidoCost(meScore int, youScore int) int {
+func (es EnvidoSequence) Clone() *EnvidoSequence {
+	return &EnvidoSequence{
+		Sequence:            append([]string{}, es.Sequence...),
+		StartingPlayerID:    es.StartingPlayerID,
+		EnvidoPointsAwarded: es.EnvidoPointsAwarded,
+	}
+}
+
+func (es EnvidoSequence) WithStep(step string) (EnvidoSequence, error) {
+	if !es.CanAddStep(step) {
+		return es, errInvalidEnvidoSequence
+	}
+	newEs := es.Clone()
+	newEs.AddStep(step)
+	return *newEs, nil
+}
+
+func calculateFaltaEnvidoCost(maxPoints, meScore, youScore int) int {
+	// maxPoints is normally only 15 or 30, but if it's set to less then
+	// use the same rule as for 15, but using maxPoints instead.
+	if maxPoints < 15 {
+		return maxPoints - meScore
+	}
 	if meScore < 15 && youScore < 15 {
 		return 15 - meScore
 	}
