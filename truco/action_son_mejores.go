@@ -60,3 +60,7 @@ func (a ActionSaySonMejores) YieldsTurn(g GameState) bool {
 func (a *ActionSaySonMejores) Enrich(g GameState) {
 	a.Score = g.Players[a.PlayerID].Hand.EnvidoScore()
 }
+
+func (a ActionSaySonMejores) GetPriority() int {
+	return 1
+}

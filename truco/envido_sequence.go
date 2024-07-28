@@ -2,7 +2,6 @@ package truco
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -26,66 +25,66 @@ const (
 
 var (
 	validEnvidoSequenceCosts = map[string]int{
-		SAY_ENVIDO:       COST_NOT_READY,
-		SAY_REAL_ENVIDO:  COST_NOT_READY,
-		SAY_FALTA_ENVIDO: COST_NOT_READY,
-		fmt.Sprintf("%s,%s", SAY_ENVIDO, SAY_ENVIDO):                                                                                                         COST_NOT_READY,
-		fmt.Sprintf("%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO):                                                                                                    COST_NOT_READY,
-		fmt.Sprintf("%s,%s", SAY_ENVIDO, SAY_FALTA_ENVIDO):                                                                                                   COST_NOT_READY,
-		fmt.Sprintf("%s,%s", SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO):                                                                                              COST_NOT_READY,
-		fmt.Sprintf("%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO):                                                                                     COST_NOT_READY,
-		fmt.Sprintf("%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO):                                                                               COST_NOT_READY,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO):                                                                COST_NOT_READY,
-		fmt.Sprintf("%s,%s", SAY_ENVIDO, SAY_ENVIDO_QUIERO):                                                                                                  2,
-		fmt.Sprintf("%s,%s", SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO):                                                                                             3,
-		fmt.Sprintf("%s,%s", SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO):                                                                                            COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_ENVIDO_QUIERO):                                                                                   4,
-		fmt.Sprintf("%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO):                                                                              5,
-		fmt.Sprintf("%s,%s,%s", SAY_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO):                                                                             COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s", SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO):                                                                        COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO):                                                               7,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO):                                                         COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO):                                          COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                                             2,
-		fmt.Sprintf("%s,%s,%s", SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                                        3,
-		fmt.Sprintf("%s,%s,%s", SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                                       COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                              4,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                         5,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                        COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                   COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                          7,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                    COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                     COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                                                         2,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                                                    3,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                                                   COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                                          4,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                                     5,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                                    COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                               COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                      7,
-		fmt.Sprintf("%s,%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES): COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                                          2,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                                     3,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                                    COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                           4,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                      5,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                     COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                       7,
-		fmt.Sprintf("%s,%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                 COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):  COST_FALTA_ENVIDO,
-		fmt.Sprintf("%s,%s", SAY_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                                               1,
-		fmt.Sprintf("%s,%s", SAY_REAL_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                                          1,
-		fmt.Sprintf("%s,%s", SAY_FALTA_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                                         1,
-		fmt.Sprintf("%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                                2,
-		fmt.Sprintf("%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                           2,
-		fmt.Sprintf("%s,%s,%s", SAY_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                          2,
-		fmt.Sprintf("%s,%s,%s", SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                     3,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                            4,
-		fmt.Sprintf("%s,%s,%s,%s", SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                      5,
-		fmt.Sprintf("%s,%s,%s,%s,%s", SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                       7,
+		SAY_ENVIDO:                                                                                                          COST_NOT_READY,
+		SAY_REAL_ENVIDO:                                                                                                     COST_NOT_READY,
+		SAY_FALTA_ENVIDO:                                                                                                    COST_NOT_READY,
+		_s(SAY_ENVIDO, SAY_ENVIDO):                                                                                          COST_NOT_READY,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO):                                                                                     COST_NOT_READY,
+		_s(SAY_ENVIDO, SAY_FALTA_ENVIDO):                                                                                    COST_NOT_READY,
+		_s(SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO):                                                                               COST_NOT_READY,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO):                                                                         COST_NOT_READY,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO):                                                                   COST_NOT_READY,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO):                                                       COST_NOT_READY,
+		_s(SAY_ENVIDO, SAY_ENVIDO_QUIERO):                                                                                   2,
+		_s(SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO):                                                                              3,
+		_s(SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO):                                                                             COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_ENVIDO_QUIERO):                                                                       4,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO):                                                                  5,
+		_s(SAY_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO):                                                                 COST_FALTA_ENVIDO,
+		_s(SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO):                                                            COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO):                                                      7,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO):                                                COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO):                                    COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                                 2,
+		_s(SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                            3,
+		_s(SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                           COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                     4,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                                5,
+		_s(SAY_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                               COST_FALTA_ENVIDO,
+		_s(SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                          COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                                    7,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                              COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE):                  COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                                                2,
+		_s(SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                                           3,
+		_s(SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                                          COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                                    4,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                               5,
+		_s(SAY_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                              COST_FALTA_ENVIDO,
+		_s(SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                         COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):                   7,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES):             COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_MEJORES): COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                                 2,
+		_s(SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                            3,
+		_s(SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                           COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                     4,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                                5,
+		_s(SAY_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                               COST_FALTA_ENVIDO,
+		_s(SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                          COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):                    7,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):              COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_QUIERO, SAY_ENVIDO_SCORE, SAY_SON_BUENAS):  COST_FALTA_ENVIDO,
+		_s(SAY_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                                1,
+		_s(SAY_REAL_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                           1,
+		_s(SAY_FALTA_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                          1,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                                    2,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                               2,
+		_s(SAY_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                              2,
+		_s(SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                         3,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                                   4,
+		_s(SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                             5,
+		_s(SAY_ENVIDO, SAY_ENVIDO, SAY_REAL_ENVIDO, SAY_FALTA_ENVIDO, SAY_ENVIDO_NO_QUIERO):                                 7,
 	}
 )
 
@@ -140,13 +139,13 @@ func (es *EnvidoSequence) IsFinished() bool {
 	return last == SAY_SON_BUENAS || last == SAY_SON_MEJORES || last == SAY_ENVIDO_NO_QUIERO
 }
 
-func (es EnvidoSequence) Cost(maxPoints, currentPlayerScore, otherPlayerScore int) (int, error) {
+func (es EnvidoSequence) Cost(maxPoints, winnerPlayerScore, loserPlayerScore int) (int, error) {
 	if !es.isValid() {
 		return COST_NOT_READY, errInvalidEnvidoSequence
 	}
 	cost := validEnvidoSequenceCosts[es.String()]
 	if cost == COST_FALTA_ENVIDO {
-		return calculateFaltaEnvidoCost(maxPoints, currentPlayerScore, otherPlayerScore), nil
+		return calculateFaltaEnvidoCost(maxPoints, winnerPlayerScore, loserPlayerScore), nil
 	}
 	if !es.IsFinished() {
 		return cost, errUnfinishedEnvidoSequence
@@ -180,16 +179,16 @@ func (es EnvidoSequence) WithStep(step string) (EnvidoSequence, error) {
 	return *newEs, nil
 }
 
-func calculateFaltaEnvidoCost(maxPoints, meScore, youScore int) int {
+func calculateFaltaEnvidoCost(maxPoints, winnerScore, loserScore int) int {
 	// maxPoints is normally only 15 or 30, but if it's set to less then
 	// use the same rule as for 15, but using maxPoints instead.
 	if maxPoints < 15 {
-		return maxPoints - meScore
+		return maxPoints - winnerScore
 	}
-	if meScore < 15 && youScore < 15 {
-		return 15 - meScore
+	if winnerScore < 15 && loserScore < 15 {
+		return 15 - winnerScore
 	}
-	return 30 - max(meScore, youScore)
+	return 30 - max(winnerScore, loserScore)
 }
 
 var (

@@ -50,6 +50,8 @@ type GameState struct {
 	// Example sequence is: [SAY_TRUCO, SAY_TRUCO_QUIERO, SAY_QUIERO_RETRUCO, SAY_TRUCO_NO_QUIERO]
 	TrucoSequence *TrucoSequence `json:"trucoSequence"`
 
+	FlorSequence *FlorSequence `json:"florSequence"`
+
 	// CardRevealSequence is the sequence of card reveal actions that have been taken in the current round.
 	// Each step is each card that was revealed (by both players).
 	// `BistepWinners` (TODO: bad name) stores the result of the faceoff between each pair of cards.
@@ -113,11 +115,13 @@ type RoundLog struct {
 	// For envido/truco winners and points, note that there is still a
 	// winner of 1 point if a player said "no quiero" to the envido/truco.
 	//
-	// If envido wasn't played at all, then EnvidoWinnerPlayerID is -1.
+	// If envido/flor/truco wasn't played at all, then ...WinnerPlayerID is -1.
 	//
 	// At the end of a round, there will always be a TrucoWinnerPlayerID,
 	// even if truco wasn't played, implicitly by revealing the cards.
 
+	FlorWinnerPlayerID   int `json:"florWinnerPlayerID"`
+	FlorPoints           int `json:"florPoints"`
 	EnvidoWinnerPlayerID int `json:"envidoWinnerPlayerID"`
 	EnvidoPoints         int `json:"envidoPoints"`
 	TrucoWinnerPlayerID  int `json:"trucoWinnerPlayerID"`
@@ -186,6 +190,7 @@ func (g *GameState) startNewRound() {
 	g.Players[g.TurnOpponentPlayerID].Hand = g.deck.dealHand()
 	g.EnvidoSequence = &EnvidoSequence{StartingPlayerID: -1}
 	g.TrucoSequence = &TrucoSequence{StartingPlayerID: -1, QuieroOwnerPlayerID: -1}
+	g.FlorSequence = &FlorSequence{StartingPlayerID: -1}
 	g.CardRevealSequence = &CardRevealSequence{}
 	g.IsEnvidoFinished = false
 	g.IsRoundFinished = false
@@ -199,6 +204,8 @@ func (g *GameState) startNewRound() {
 		EnvidoPoints:         0,
 		TrucoWinnerPlayerID:  -1,
 		TrucoPoints:          0,
+		FlorWinnerPlayerID:   -1,
+		FlorPoints:           0,
 		ActionsLog:           []ActionLog{},
 	})
 	g.PossibleActions = _serializeActions(g.CalculatePossibleActions())
@@ -328,6 +335,15 @@ type Action interface {
 	// GameState.CalculatePossibleActions() must call this method on all actions.
 	Enrich(g GameState)
 
+	// GetPriority is used by GameState to calculate which actions are possible.
+	// By default, all actions have priority 0. In principle, all actions that are
+	// possible will be collected. If an action with higher priority is found,
+	// all possible actions are removed, and only actions with this higher priority
+	// will be collected. And so on.
+	//
+	// For example, if Flor is possible, then it should be higher priority.
+	GetPriority() int
+
 	fmt.Stringer
 }
 
@@ -359,25 +375,29 @@ func (g GameState) CalculatePossibleActions() []Action {
 		NewActionConfirmRoundFinished(g.TurnPlayerID),
 		NewActionConfirmRoundFinished(g.TurnOpponentPlayerID),
 		NewActionRevealEnvidoScore(g.TurnPlayerID),
+		NewActionSayFlor(g.TurnPlayerID),
+		NewActionSayContraflor(g.TurnPlayerID),
+		NewActionSayContraflorAlResto(g.TurnPlayerID),
+		NewActionSayConFlorMeAchico(g.TurnPlayerID),
+		NewActionSayConFlorQuiero(g.TurnPlayerID),
+		NewActionSayFlorScore(g.TurnPlayerID),
+		NewActionSayFlorSonBuenas(g.TurnPlayerID),
+		NewActionSayFlorSonMejores(g.TurnPlayerID),
+		NewActionRevealFlorScore(g.TurnPlayerID),
 	)
 
-	// The reveal_envido_score action happens in two cases:
-	// 1. Round has ended and player hasn't shown envido score yet
-	// 2. Round is going on, but player would win the game by revealing the score
-	//
-	// In both cases, this should be the only action available. So don't check others.
-	actionRevealEnvidoScore := NewActionRevealEnvidoScore(g.TurnPlayerID)
-	actionRevealEnvidoScore.Enrich(g)
-	if actionRevealEnvidoScore.IsPossible(g) {
-		allActions = []Action{actionRevealEnvidoScore}
-	}
-
 	possibleActions := []Action{}
+	priority := 0
 	for _, action := range allActions {
 		action.Enrich(g)
-		if action.IsPossible(g) {
-			possibleActions = append(possibleActions, action)
+		if !action.IsPossible(g) {
+			continue
 		}
+		if action.GetPriority() > priority {
+			priority = action.GetPriority()
+			possibleActions = []Action{}
+		}
+		possibleActions = append(possibleActions, action)
 	}
 	return possibleActions
 }
@@ -433,6 +453,24 @@ func DeserializeAction(bs []byte) (Action, error) {
 		action = &ActionConfirmRoundFinished{}
 	case REVEAL_ENVIDO_SCORE:
 		action = &ActionRevealEnvidoScore{}
+	case SAY_FLOR:
+		action = &ActionSayFlor{}
+	case SAY_CONTRAFLOR:
+		action = &ActionSayContraflor{}
+	case SAY_CONTRAFLOR_AL_RESTO:
+		action = &ActionSayContraflorAlResto{}
+	case SAY_CON_FLOR_ME_ACHICO:
+		action = &ActionSayConFlorMeAchico{}
+	case SAY_CON_FLOR_QUIERO:
+		action = &ActionSayConFlorQuiero{}
+	case SAY_FLOR_SCORE:
+		action = &ActionSayFlorScore{}
+	case SAY_FLOR_SON_BUENAS:
+		action = &ActionSayFlorSonBuenas{}
+	case SAY_FLOR_SON_MEJORES:
+		action = &ActionSayFlorSonMejores{}
+	case REVEAL_FLOR_SCORE:
+		action = &ActionRevealFlorScore{}
 	default:
 		return nil, fmt.Errorf("unknown action: [%v]", string(bs))
 	}
@@ -457,6 +495,27 @@ func _deserializeCurrentRoundLastAction(g GameState) Action {
 	lastAction := g.RoundsLog[g.RoundNumber].ActionsLog[len(g.RoundsLog[g.RoundNumber].ActionsLog)-1].Action
 	a, _ := DeserializeAction(lastAction)
 	return a
+}
+
+func _deserializeCurrentRoundActions(g GameState) []Action {
+	curRoundActions := g.RoundsLog[g.RoundNumber].ActionsLog
+	actions := make([]Action, len(curRoundActions))
+	for i, actionLog := range curRoundActions {
+		action, _ := DeserializeAction(actionLog.Action)
+		actions[i] = action
+	}
+	return actions
+}
+
+func _deserializeCurrentRoundActionsByPlayerID(playerID int, g GameState) []Action {
+	actions := _deserializeCurrentRoundActions(g)
+	filteredActions := []Action{}
+	for _, a := range actions {
+		if a.GetPlayerID() == playerID {
+			filteredActions = append(filteredActions, a)
+		}
+	}
+	return filteredActions
 }
 
 func (g *GameState) ToClientGameState(youPlayerID int) ClientGameState {
@@ -491,6 +550,9 @@ func (g *GameState) ToClientGameState(youPlayerID int) ClientGameState {
 		TrucoWinnerPlayerID:         g.RoundsLog[g.RoundNumber].TrucoWinnerPlayerID,
 		TrucoPoints:                 g.RoundsLog[g.RoundNumber].TrucoPoints,
 		WasTrucoAccepted:            g.TrucoSequence.WasAccepted(),
+		FlorWinnerPlayerID:          g.RoundsLog[g.RoundNumber].FlorWinnerPlayerID,
+		WasFlorAccepted:             g.FlorSequence.WasAccepted(),
+		FlorPoints:                  g.RoundsLog[g.RoundNumber].FlorPoints,
 		YourDisplayUnrevealedCards:  g.Players[youPlayerID].Hand.prepareDisplayUnrevealedCards(true),
 		TheirDisplayUnrevealedCards: g.Players[themPlayerID].Hand.prepareDisplayUnrevealedCards(false),
 		RuleMaxPoints:               g.RuleMaxPoints,
@@ -563,6 +625,9 @@ type ClientGameState struct {
 	WinnerPlayerID int `json:"winnerPlayerID"`
 
 	// Some state information about the current round, in case it's useful to the client.
+	FlorWinnerPlayerID   int  `json:"florWinnerPlayerID"`
+	WasFlorAccepted      bool `json:"wasFlorAccepted"`
+	FlorPoints           int  `json:"florPoints"`
 	EnvidoWinnerPlayerID int  `json:"envidoWinnerPlayerID"`
 	WasEnvidoAccepted    bool `json:"wasEnvidoAccepted"`
 	EnvidoPoints         int  `json:"envidoPoints"`

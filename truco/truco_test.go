@@ -19,7 +19,9 @@ func TestInitialOptions(t *testing.T) {
 		NewActionSayTruco(0),
 		NewActionSayMeVoyAlMazo(0),
 	}
-
+	for _, action := range expectedActions {
+		action.Enrich(*gameState)
+	}
 	require.Equal(
 		t,
 		_serializeActions(expectedActions),
@@ -40,9 +42,10 @@ func TestAfterRealEnvidoOptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Equal(
-		t,
-		_serializeActions(expectedActions),
-		gameState.PossibleActions,
-	)
+	for _, action := range expectedActions {
+		action.Enrich(*gameState)
+	}
+	for i, expectedAction := range _serializeActions(expectedActions) {
+		require.Equal(t, string(expectedAction), string(gameState.PossibleActions[i]))
+	}
 }

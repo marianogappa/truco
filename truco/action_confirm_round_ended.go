@@ -22,3 +22,7 @@ func (a ActionConfirmRoundFinished) YieldsTurn(g GameState) bool {
 	// The turn should go to the player who is left to confirm the round finished
 	return a.PlayerID == g.TurnPlayerID
 }
+
+func (a ActionConfirmRoundFinished) GetPriority() int {
+	return 1
+}

@@ -61,6 +61,10 @@ func calculateEnvidoScore(gs truco.ClientGameState) int {
 	return truco.Hand{Revealed: gs.YourRevealedCards, Unrevealed: gs.YourUnrevealedCards}.EnvidoScore()
 }
 
+func calculateFlorScore(gs truco.ClientGameState) int {
+	return truco.Hand{Revealed: gs.YourRevealedCards, Unrevealed: gs.YourUnrevealedCards}.FlorScore()
+}
+
 func calculateCardStrength(gs truco.Card) int {
 	specialValues := map[truco.Card]int{
 		{Suit: truco.ESPADA, Number: 1}: 15,
@@ -95,24 +99,14 @@ func canAnyEnvido(actions map[string]truco.Action) bool {
 	)) > 0
 }
 
-func possibleEnvidoActionsMap(gs truco.ClientGameState) map[string]truco.Action {
-	possible := possibleActionsMap(gs)
-
-	filter := map[string]struct{}{
-		truco.SAY_ENVIDO:        {},
-		truco.SAY_REAL_ENVIDO:   {},
-		truco.SAY_FALTA_ENVIDO:  {},
-		truco.SAY_ENVIDO_QUIERO: {},
-	}
-
-	possibleEnvidoActions := make(map[string]truco.Action)
-	for name, action := range possible {
-		if _, ok := filter[name]; ok {
-			possibleEnvidoActions[name] = action
-		}
-	}
-
-	return possibleEnvidoActions
+func canAnyFlor(actions map[string]truco.Action) bool {
+	return len(filter(actions,
+		truco.NewActionSayFlor(1),
+		truco.NewActionSayContraflor(1),
+		truco.NewActionSayContraflorAlResto(1),
+		truco.NewActionSayConFlorQuiero(1),
+		truco.NewActionSayConFlorMeAchico(1),
+	)) > 0
 }
 
 func possibleTrucoActionsMap(gs truco.ClientGameState) map[string]truco.Action {
@@ -136,7 +130,7 @@ func possibleTrucoActionsMap(gs truco.ClientGameState) map[string]truco.Action {
 }
 
 func sortPossibleEnvidoActions(gs truco.ClientGameState) []truco.Action {
-	possible := possibleEnvidoActionsMap(gs)
+	possible := possibleActionsMap(gs)
 	filter := []string{
 		truco.SAY_ENVIDO_QUIERO,
 		truco.SAY_ENVIDO,
@@ -158,6 +152,46 @@ func sortPossibleEnvidoActions(gs truco.ClientGameState) []truco.Action {
 	})
 
 	return actions
+}
+
+func sortPossibleFlorActions(gs truco.ClientGameState) []truco.Action {
+	possible := possibleActionsMap(gs)
+	filter := []string{
+		truco.SAY_FLOR,
+		truco.SAY_CON_FLOR_QUIERO,
+		truco.SAY_CONTRAFLOR,
+		truco.SAY_CONTRAFLOR_AL_RESTO,
+	}
+
+	actions := []truco.Action{}
+	for _, name := range filter {
+		if action, ok := possible[name]; ok {
+			actions = append(actions, action)
+		}
+	}
+
+	// Sort actions based on their cost
+	// TODO: this is broken at the moment because the cost doesn't work well
+	sort.Slice(actions, func(i, j int) bool {
+		return _getFlorActionQuieroCost(actions[i]) < _getFlorActionQuieroCost(actions[j])
+	})
+
+	return actions
+}
+
+func _getFlorActionQuieroCost(action truco.Action) int {
+	switch a := action.(type) {
+	case *truco.ActionSayFlor:
+		return a.QuieroCost
+	case *truco.ActionSayConFlorQuiero:
+		return a.Cost
+	case *truco.ActionSayContraflor:
+		return a.QuieroCost
+	case *truco.ActionSayContraflorAlResto:
+		return a.QuieroCost
+	default:
+		panic("this code should be unreachable! bug in _getFlorActionCost! please report this bug.")
+	}
 }
 
 func _getEnvidoActionQuieroCost(action truco.Action) int {
@@ -196,6 +230,53 @@ func shouldAnyEnvido(gs truco.ClientGameState, aggresiveness string, log func(st
 	log("shouldAcceptEnvido: should[%v] = %v, score = %v", aggresiveness, shouldMap[aggresiveness], score)
 
 	return score >= shouldMap[aggresiveness]
+}
+
+func shouldAnyFlor(gs truco.ClientGameState, aggresiveness string, log func(string, ...any)) bool {
+	// if "no quiero" is possible and saying no quiero means losing, return true
+	// possible := possibleActionsMap(gs)
+	// noQuieroActions := filter(possible, truco.NewActionSayConFlorMeAchico(gs.YouPlayerID))
+	// if len(noQuieroActions) > 0 {
+	// 	cost := noQuieroActions[0].(*truco.ActionSayConFlorMeAchico).Cost
+	// 	if gs.TheirScore+cost >= gs.RuleMaxPoints {
+	// 		return true
+	// 	}
+	// }
+	// //TODO
+	// return true
+
+	// In principle let's always choose an action, since flor is unlikely to be matched once one has it
+	return true
+}
+
+func chooseFlorAction(gs truco.ClientGameState, aggresiveness string) truco.Action {
+	possibleActions := sortPossibleFlorActions(gs)
+	score := calculateFlorScore(gs)
+
+	minScore := map[string]int{
+		"low":    31,
+		"normal": 29,
+		"high":   26,
+	}[aggresiveness]
+	maxScore := 38
+
+	span := maxScore - minScore
+	numActions := len(possibleActions)
+
+	// Calculate bucket width
+	bucketWidth := float64(span) / float64(numActions)
+
+	// Determine the bucket for the score
+	bucket := int(float64(score-minScore) / bucketWidth)
+
+	// Handle edge cases
+	if bucket < 0 {
+		bucket = 0
+	} else if bucket >= numActions {
+		bucket = numActions - 1
+	}
+
+	return possibleActions[bucket]
 }
 
 func chooseEnvidoAction(gs truco.ClientGameState, aggresiveness string) truco.Action {
@@ -612,6 +693,12 @@ func envidoNoQuiero(gs truco.ClientGameState) truco.Action {
 func envidoQuiero(gs truco.ClientGameState) truco.Action {
 	return truco.NewActionSayEnvidoQuiero(gs.YouPlayerID)
 }
+func florQuiero(gs truco.ClientGameState) truco.Action {
+	return truco.NewActionSayConFlorQuiero(gs.YouPlayerID)
+}
+func florNoQuiero(gs truco.ClientGameState) truco.Action {
+	return truco.NewActionSayConFlorMeAchico(gs.YouPlayerID)
+}
 func trucoQuiero(gs truco.ClientGameState) truco.Action {
 	return truco.NewActionSayTrucoQuiero(gs.YouPlayerID)
 }
@@ -654,8 +741,31 @@ func (m Bot) ChooseAction(gs truco.ClientGameState) truco.Action {
 	var (
 		aggresiveness = calculateAggresiveness(gs)
 		shouldEnvido  = shouldAnyEnvido(gs, aggresiveness, m.log)
+		shouldFlor    = shouldAnyFlor(gs, aggresiveness, m.log)
 		shouldTruco   = shouldAcceptTruco(gs, aggresiveness, m.log)
 	)
+
+	// Handle flor responses or actions
+	if canAnyFlor(actions) {
+		m.log("Flor actions are on the table.")
+
+		if shouldFlor && len(filter(actions, florQuiero(gs))) > 0 {
+			m.log("I chose an flor action due to considering I should based on my aggresiveness, which is %v and my flor score is %v", aggresiveness, calculateFlorScore(gs))
+			return chooseFlorAction(gs, aggresiveness)
+		}
+		if !shouldFlor && len(filter(actions, florNoQuiero(gs))) > 0 {
+			m.log("I said no quiero to flor due to considering I shouldn't based on my aggresiveness, which is %v and my flor score is %v", aggresiveness, calculateFlorScore(gs))
+			return truco.NewActionSayConFlorMeAchico(gs.YouPlayerID)
+		}
+		if shouldFlor {
+			// This is the case where the bot initiates the envido
+			// Sometimes (<50%), a human player would hide their envido by not initiating, and hoping the other says it first
+			// TODO: should this chance based on aggresiveness?
+			if rand.Float64() < 0.67 {
+				return chooseFlorAction(gs, aggresiveness)
+			}
+		}
+	}
 
 	// Handle envido responses or actions
 	if canAnyEnvido(actions) {
@@ -667,7 +777,7 @@ func (m Bot) ChooseAction(gs truco.ClientGameState) truco.Action {
 		}
 		if !shouldEnvido && len(filter(actions, envidoNoQuiero(gs))) > 0 {
 			m.log("I said no quiero to envido due to considering I shouldn't based on my aggresiveness, which is %v and my envido score is %v", aggresiveness, calculateEnvidoScore(gs))
-			return truco.NewActionSayEnvidoNoQuiero(1)
+			return truco.NewActionSayEnvidoNoQuiero(gs.YouPlayerID)
 		}
 		if shouldEnvido {
 			// This is the case where the bot initiates the envido

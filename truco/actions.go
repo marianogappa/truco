@@ -20,6 +20,10 @@ func (a act) GetPlayerID() int {
 	return a.PlayerID
 }
 
+func (a act) GetPriority() int {
+	return 0
+}
+
 // By default, actions don't need to be enriched.
 func (a act) Enrich(g GameState) {}
 
@@ -106,6 +110,42 @@ func NewActionConfirmRoundFinished(playerID int) Action {
 
 func NewActionRevealEnvidoScore(playerID int) Action {
 	return &ActionRevealEnvidoScore{act: act{Name: REVEAL_ENVIDO_SCORE, PlayerID: playerID}}
+}
+
+func NewActionSayFlor(playerID int) Action {
+	return &ActionSayFlor{act: act{Name: SAY_FLOR, PlayerID: playerID}}
+}
+
+func NewActionSayConFlorMeAchico(playerID int) Action {
+	return &ActionSayConFlorMeAchico{act: act{Name: SAY_CON_FLOR_ME_ACHICO, PlayerID: playerID}}
+}
+
+func NewActionSayContraflor(playerID int) Action {
+	return &ActionSayContraflor{act: act{Name: SAY_CONTRAFLOR, PlayerID: playerID}}
+}
+
+func NewActionSayContraflorAlResto(playerID int) Action {
+	return &ActionSayContraflorAlResto{act: act{Name: SAY_CONTRAFLOR_AL_RESTO, PlayerID: playerID}}
+}
+
+func NewActionSayConFlorQuiero(playerID int) Action {
+	return &ActionSayConFlorQuiero{act: act{Name: SAY_CON_FLOR_QUIERO, PlayerID: playerID}}
+}
+
+func NewActionSayFlorScore(playerID int) Action {
+	return &ActionSayFlorScore{act: act{Name: SAY_FLOR_SCORE, PlayerID: playerID}}
+}
+
+func NewActionSayFlorSonBuenas(playerID int) Action {
+	return &ActionSayFlorSonBuenas{act: act{Name: SAY_FLOR_SON_BUENAS, PlayerID: playerID}}
+}
+
+func NewActionSayFlorSonMejores(playerID int) Action {
+	return &ActionSayFlorSonMejores{act: act{Name: SAY_FLOR_SON_MEJORES, PlayerID: playerID}}
+}
+
+func NewActionRevealFlorScore(playerID int) Action {
+	return &ActionRevealFlorScore{act: act{Name: REVEAL_FLOR_SCORE, PlayerID: playerID}}
 }
 
 func (a ActionSaySonMejores) String() string {

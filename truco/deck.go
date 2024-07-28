@@ -143,6 +143,17 @@ func (h *Hand) prepareDisplayUnrevealedCards(isYou bool) []DisplayCard {
 	return result
 }
 
+func (h Hand) HasFlor() bool {
+	suits := make(map[string]int)
+	for _, card := range append(h.Unrevealed, h.Revealed...) {
+		suits[card.Suit]++
+		if suits[card.Suit] == 3 {
+			return true
+		}
+	}
+	return false
+}
+
 var (
 	errCardNotInHand       = errors.New("card not in hand")
 	errCardAlreadyRevealed = errors.New("card already revealed")
@@ -231,6 +242,21 @@ func (h Hand) EnvidoScore() int {
 		}
 	}
 	return maxScore
+}
+
+func (h Hand) FlorScore() int {
+	if !h.HasFlor() {
+		return 0
+	}
+	score := 20
+	for _, card := range append(h.Unrevealed, h.Revealed...) {
+		cardScore := card.Number
+		if card.Number >= 10 {
+			cardScore = 0
+		}
+		score += cardScore
+	}
+	return score
 }
 
 // CompareTrucoScore returns:
