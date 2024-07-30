@@ -68,7 +68,7 @@ func (a *ActionRevealCard) Run(g *GameState) error {
 		a.Score = g.Players[a.PlayerID].Hand.EnvidoScore() // it must be the action's player
 	}
 	// Revealing a card may cause the flor score to be revealed
-	if g.tryAwardFlorPoints(a.PlayerID) {
+	if g.tryAwardFlorPoints() {
 		a.EnMesa = true
 		a.Score = g.Players[a.PlayerID].Hand.FlorScore() // it must be the action's player
 	}

@@ -225,11 +225,11 @@ func (g *GameState) RunAction(action Action) error {
 	}
 
 	if !action.IsPossible(*g) {
-		return errActionNotPossible
+		return fmt.Errorf("%w trying to run [%v]", errActionNotPossible, action)
 	}
 	err := action.Run(g)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w trying to run [%v] after checking it was possible", err, action)
 	}
 
 	if action.GetName() != CONFIRM_ROUND_FINISHED {
@@ -253,7 +253,7 @@ func (g *GameState) RunAction(action Action) error {
 
 	if !g.IsGameEnded && g.IsRoundFinished && len(g.RoundFinishedConfirmedPlayerIDs) == 1 {
 		if g.RoundFinishedConfirmedPlayerIDs[g.TurnPlayerID] {
-			g.TurnPlayerID, g.TurnOpponentPlayerID = g.TurnOpponentPlayerID, g.TurnPlayerID
+			g.changeTurn()
 		}
 	}
 
@@ -267,11 +267,31 @@ func (g *GameState) RunAction(action Action) error {
 	}
 
 	possibleActions := g.CalculatePossibleActions()
+	if g.countActionsOfTurnPlayer() == 0 {
+		// If the current player has no actions left, it's the opponent's turn.
+		g.changeTurn()
+		possibleActions = g.CalculatePossibleActions()
+	}
+
 	g.PossibleActions = _serializeActions(possibleActions)
 
 	log.Printf("Possible actions: %v\n", possibleActions)
 
 	return nil
+}
+
+func (g *GameState) changeTurn() {
+	g.TurnPlayerID, g.TurnOpponentPlayerID = g.TurnOpponentPlayerID, g.TurnPlayerID
+}
+
+func (g GameState) countActionsOfTurnPlayer() int {
+	count := 0
+	for _, a := range g.CalculatePossibleActions() {
+		if a.GetPlayerID() == g.TurnPlayerID {
+			count++
+		}
+	}
+	return count
 }
 
 func (g GameState) OpponentOf(playerID int) int {
@@ -344,6 +364,8 @@ type Action interface {
 	// For example, if Flor is possible, then it should be higher priority.
 	GetPriority() int
 
+	AllowLowerPriority() bool
+
 	fmt.Stringer
 }
 
@@ -371,10 +393,10 @@ func (g GameState) CalculatePossibleActions() []Action {
 		NewActionSayQuieroValeCuatro(g.TurnPlayerID),
 		NewActionSaySonBuenas(g.TurnPlayerID),
 		NewActionSaySonMejores(g.TurnPlayerID),
-		NewActionSayMeVoyAlMazo(g.TurnPlayerID),
 		NewActionConfirmRoundFinished(g.TurnPlayerID),
 		NewActionConfirmRoundFinished(g.TurnOpponentPlayerID),
 		NewActionRevealEnvidoScore(g.TurnPlayerID),
+		NewActionRevealEnvidoScore(g.TurnOpponentPlayerID),
 		NewActionSayFlor(g.TurnPlayerID),
 		NewActionSayContraflor(g.TurnPlayerID),
 		NewActionSayContraflorAlResto(g.TurnPlayerID),
@@ -384,6 +406,8 @@ func (g GameState) CalculatePossibleActions() []Action {
 		NewActionSayFlorSonBuenas(g.TurnPlayerID),
 		NewActionSayFlorSonMejores(g.TurnPlayerID),
 		NewActionRevealFlorScore(g.TurnPlayerID),
+		NewActionRevealFlorScore(g.TurnOpponentPlayerID),
+		NewActionSayMeVoyAlMazo(g.TurnPlayerID),
 	)
 
 	possibleActions := []Action{}
@@ -393,7 +417,10 @@ func (g GameState) CalculatePossibleActions() []Action {
 		if !action.IsPossible(g) {
 			continue
 		}
-		if action.GetPriority() > priority {
+		if action.GetPriority() < priority {
+			continue
+		}
+		if action.GetPriority() > priority && !action.AllowLowerPriority() {
 			priority = action.GetPriority()
 			possibleActions = []Action{}
 		}

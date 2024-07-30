@@ -20,8 +20,8 @@ var (
 		// All "me achico"
 		_s(SAY_FLOR, SAY_CON_FLOR_ME_ACHICO):                                          3,
 		_s(SAY_FLOR, SAY_CONTRAFLOR, SAY_CON_FLOR_ME_ACHICO):                          4,
-		_s(SAY_FLOR, SAY_CONTRAFLOR, SAY_CONTRAFLOR_AL_RESTO, SAY_CON_FLOR_ME_ACHICO): 6,
 		_s(SAY_FLOR, SAY_CONTRAFLOR_AL_RESTO, SAY_CON_FLOR_ME_ACHICO):                 4,
+		_s(SAY_FLOR, SAY_CONTRAFLOR, SAY_CONTRAFLOR_AL_RESTO, SAY_CON_FLOR_ME_ACHICO): 6,
 
 		// "quiero" to "flor"
 		_s(SAY_FLOR, SAY_CON_FLOR_QUIERO):                                       4,

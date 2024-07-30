@@ -11,6 +11,9 @@ func (a ActionSayMeVoyAlMazo) IsPossible(g GameState) bool {
 	if !g.EnvidoSequence.IsEmpty() && !g.IsEnvidoFinished && !g.EnvidoSequence.IsFinished() {
 		return false
 	}
+	if !g.FlorSequence.IsEmpty() && !g.FlorSequence.IsFinished() {
+		return false
+	}
 	if g.IsEnvidoFinished && !g.TrucoSequence.IsEmpty() && !g.TrucoSequence.IsFinished() {
 		return false
 	}
@@ -47,4 +50,12 @@ func (a ActionSayMeVoyAlMazo) Run(g *GameState) error {
 	g.Players[g.TurnOpponentPlayerID].Score += cost
 	g.IsRoundFinished = true
 	return nil
+}
+
+func (a ActionSayMeVoyAlMazo) GetPriority() int {
+	return 2
+}
+
+func (a ActionSayMeVoyAlMazo) AllowLowerPriority() bool {
+	return true
 }

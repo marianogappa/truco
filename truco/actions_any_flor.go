@@ -1,5 +1,7 @@
 package truco
 
+import "fmt"
+
 const (
 	SAY_FLOR                = "say_flor"
 	SAY_CON_FLOR_ME_ACHICO  = "say_con_flor_me_achico"
@@ -91,18 +93,20 @@ func (a ActionSayFlorSonMejores) IsPossible(g GameState) bool {
 }
 
 func (a ActionRevealFlorScore) IsPossible(g GameState) bool {
-	if !g.anyFlorActionIsPossible(&a) {
+	if !g.RuleIsFlorEnabled {
 		return false
 	}
-	if g.RoundsLog[g.RoundNumber].FlorWinnerPlayerID != a.PlayerID {
+	if !g.Players[a.GetPlayerID()].Hand.HasFlor() {
 		return false
 	}
-	if !g.IsRoundFinished {
+	roundLog := g.RoundsLog[g.RoundNumber]
+	if roundLog.FlorWinnerPlayerID != a.PlayerID {
 		return false
 	}
-	hand := g.Players[a.PlayerID].Hand
-	revealedHand := Hand{Revealed: g.Players[a.PlayerID].Hand.Revealed}
-	return revealedHand.FlorScore() == hand.FlorScore()
+	if !g.IsRoundFinished && g.Players[a.PlayerID].Score+roundLog.FlorPoints < g.RuleMaxPoints {
+		return false
+	}
+	return len(g.Players[a.PlayerID].Hand.Revealed) != 3
 }
 
 func (g GameState) anyFlorActionIsPossible(a Action) bool {
@@ -112,10 +116,10 @@ func (g GameState) anyFlorActionIsPossible(a Action) bool {
 	if !g.Players[a.GetPlayerID()].Hand.HasFlor() {
 		return false
 	}
-	if a.GetName() != REVEAL_FLOR_SCORE && g.IsRoundFinished {
+	if g.IsRoundFinished {
 		return false
 	}
-	// For any flor action except "say_flor", both players must have flor
+	// For any flor action except "say_flor" && "reveal_flor_score", both players must have flor
 	if a.GetName() != SAY_FLOR && !g.Players[g.OpponentOf(a.GetPlayerID())].Hand.HasFlor() {
 		return false
 	}
@@ -190,11 +194,11 @@ func (a ActionRevealFlorScore) Run(g *GameState) error {
 		return errActionNotPossible
 	}
 	g.IsEnvidoFinished = true
-	if !g.tryAwardFlorPoints(a.PlayerID) {
-		return errActionNotPossible
+	for len(g.Players[a.PlayerID].Hand.Unrevealed) > 0 {
+		_ = g.Players[a.PlayerID].Hand.RevealCard(g.Players[a.PlayerID].Hand.Unrevealed[0])
 	}
-	for _, c := range g.Players[a.PlayerID].Hand.Unrevealed {
-		_ = g.Players[a.PlayerID].Hand.RevealCard(c)
+	if !g.tryAwardFlorPoints() {
+		return fmt.Errorf("cannot award flor points")
 	}
 	return nil
 }
@@ -215,11 +219,11 @@ func finalizeFlorSequence(winnerPlayerID int, g *GameState) error {
 	}
 	g.RoundsLog[g.RoundNumber].FlorWinnerPlayerID = winnerPlayerID
 	g.RoundsLog[g.RoundNumber].FlorPoints = cost
-	g.tryAwardFlorPoints(winnerPlayerID)
+	g.tryAwardFlorPoints()
 	return nil
 }
 
-func (g *GameState) canAwardFlorPoints(revealedHand Hand) bool {
+func (g *GameState) canAwardFlorPoints() bool {
 	if !g.RuleIsFlorEnabled {
 		return false
 	}
@@ -227,20 +231,26 @@ func (g *GameState) canAwardFlorPoints(revealedHand Hand) bool {
 	if wonBy == -1 {
 		return false
 	}
-	if !g.FlorSequence.WasAccepted() {
-		return false
-	}
 	if g.FlorSequence.FlorPointsAwarded {
 		return false
 	}
-	if revealedHand.FlorScore() != g.Players[wonBy].Hand.FlorScore() {
+	// If the flor sequence was finished with "say_con_flor_me_achico", then
+	// the points can be awarded immediately even though the sequence wasn't accepted
+	// and the cards weren't revealed.
+	if !g.FlorSequence.IsEmpty() && g.FlorSequence.IsFinished() && g.FlorSequence.Sequence[len(g.FlorSequence.Sequence)-1] == SAY_CON_FLOR_ME_ACHICO {
+		return true
+	}
+	if !g.FlorSequence.WasAccepted() {
+		return false
+	}
+	if len(g.Players[wonBy].Hand.Revealed) != 3 {
 		return false
 	}
 	return true
 }
 
-func (g *GameState) tryAwardFlorPoints(playerID int) bool {
-	if !g.canAwardFlorPoints(Hand{Revealed: g.Players[playerID].Hand.Revealed}) {
+func (g *GameState) tryAwardFlorPoints() bool {
+	if !g.canAwardFlorPoints() {
 		return false
 	}
 	wonBy := g.RoundsLog[g.RoundNumber].FlorWinnerPlayerID
@@ -305,6 +315,11 @@ func (a *ActionRevealFlorScore) Enrich(g GameState) {
 	a.Score = g.Players[a.PlayerID].Hand.FlorScore()
 }
 
+func (a ActionSayFlor) YieldsTurn(g GameState) bool {
+	// If the opponent doesn't have flor, then "flor" is just a declaration and the turn continues
+	return g.Players[g.OpponentOf(a.PlayerID)].Hand.HasFlor()
+}
+
 func (a ActionSayFlorSonBuenas) YieldsTurn(g GameState) bool {
 	// In son_buenas/son_mejores/no_quiero, the turn should go to whoever started the sequence
 	return a.PlayerID != g.FlorSequence.StartingPlayerID
@@ -312,6 +327,10 @@ func (a ActionSayFlorSonBuenas) YieldsTurn(g GameState) bool {
 
 func (a ActionSayFlorSonMejores) YieldsTurn(g GameState) bool {
 	// In son_buenas/son_mejores/no_quiero, the turn should go to whoever started the sequence
+	// Unless the game should end due to the points won by this action.
+	if g.Players[a.PlayerID].Score+g.RoundsLog[g.RoundNumber].FlorPoints >= g.RuleMaxPoints {
+		return false
+	}
 	return a.PlayerID != g.FlorSequence.StartingPlayerID
 }
 

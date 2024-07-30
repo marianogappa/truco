@@ -24,6 +24,10 @@ func (a act) GetPriority() int {
 	return 0
 }
 
+func (a act) AllowLowerPriority() bool {
+	return false
+}
+
 // By default, actions don't need to be enriched.
 func (a act) Enrich(g GameState) {}
 
