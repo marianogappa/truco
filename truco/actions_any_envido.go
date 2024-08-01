@@ -195,13 +195,26 @@ func (g GameState) AnyEnvidoActionTypeEnrich(a Action) {
 		return
 	}
 	var (
-		youScore        = g.Players[a.GetPlayerID()].Score
-		theirScore      = g.Players[g.OpponentOf(a.GetPlayerID())].Score
-		quieroSeq, _    = g.EnvidoSequence.WithStep(SAY_ENVIDO_QUIERO)
-		quieroCost, _   = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
-		noQuieroSeq, _  = g.EnvidoSequence.WithStep(SAY_ENVIDO_NO_QUIERO)
-		noQuieroCost, _ = noQuieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
+		seq, _             = g.EnvidoSequence.WithStep(a.GetName())
+		youScore           = g.Players[a.GetPlayerID()].Score
+		theirScore         = g.Players[g.OpponentOf(a.GetPlayerID())].Score
+		quieroSeq, err     = seq.WithStep(SAY_ENVIDO_QUIERO)
+		quieroCost, err2   = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore, true)
+		noQuieroSeq, err3  = seq.WithStep(SAY_ENVIDO_NO_QUIERO)
+		noQuieroCost, err4 = noQuieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore, true)
 	)
+	if err != nil {
+		panic(err)
+	}
+	if err2 != nil {
+		panic(err2)
+	}
+	if err3 != nil {
+		panic(err3)
+	}
+	if err4 != nil {
+		panic(err4)
+	}
 
 	switch a.GetName() {
 	case SAY_ENVIDO:

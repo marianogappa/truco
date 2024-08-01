@@ -2,6 +2,7 @@ package truco
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -108,16 +109,21 @@ func (es *FlorSequence) IsFinished() bool {
 	return last == SAY_FLOR_SON_BUENAS || last == SAY_FLOR_SON_MEJORES || last == SAY_CON_FLOR_ME_ACHICO || (last == SAY_FLOR && es.IsSinglePlayerFlor)
 }
 
-func (es FlorSequence) Cost(maxPoints, winnerPlayerScore, loserPlayerScore int) (int, error) {
+func (es FlorSequence) Cost(maxPoints, winnerPlayerScore, loserPlayerScore int, forHint bool) (int, error) {
 	if !es.isValid() {
-		return COST_NOT_READY, errInvalidFlorSequence
+		return COST_NOT_READY, fmt.Errorf("%w: [%v]", errInvalidFlorSequence, strings.Join(es.Sequence, ","))
 	}
 	cost := validFlorSequenceCosts[es.String()]
 	if cost == COST_CONTRAFLOR_AL_RESTO {
 		return calculateFaltaEnvidoCost(maxPoints, winnerPlayerScore, loserPlayerScore), nil
 	}
+	// If this calculation is for enriching an action, we don't care if it's finished.
+	// If it's for assigning cost, then it must be finished.
+	if forHint {
+		return cost, nil
+	}
 	if !es.IsFinished() {
-		return cost, errUnfinishedFlorSequence
+		return cost, fmt.Errorf("%w: %v", errUnfinishedFlorSequence, strings.Join(es.Sequence, ","))
 	}
 	return cost, nil
 }
@@ -141,7 +147,7 @@ func (es FlorSequence) Clone() *FlorSequence {
 
 func (es FlorSequence) WithStep(step string) (FlorSequence, error) {
 	if !es.CanAddStep(step) {
-		return es, errInvalidFlorSequence
+		return es, fmt.Errorf("%w: [%v]", errInvalidFlorSequence, _s(es.Sequence...))
 	}
 	newEs := es.Clone()
 	newEs.AddStep(step)

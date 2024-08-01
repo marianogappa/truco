@@ -139,13 +139,17 @@ func (es *EnvidoSequence) IsFinished() bool {
 	return last == SAY_SON_BUENAS || last == SAY_SON_MEJORES || last == SAY_ENVIDO_NO_QUIERO
 }
 
-func (es EnvidoSequence) Cost(maxPoints, winnerPlayerScore, loserPlayerScore int) (int, error) {
+func (es EnvidoSequence) Cost(maxPoints, winnerPlayerScore, loserPlayerScore int, forHint bool) (int, error) {
 	if !es.isValid() {
 		return COST_NOT_READY, errInvalidEnvidoSequence
 	}
 	cost := validEnvidoSequenceCosts[es.String()]
 	if cost == COST_FALTA_ENVIDO {
 		return calculateFaltaEnvidoCost(maxPoints, winnerPlayerScore, loserPlayerScore), nil
+	}
+	// If this is a hint, return the cost as is, without checking if the sequence is finished.
+	if forHint {
+		return cost, nil
 	}
 	if !es.IsFinished() {
 		return cost, errUnfinishedEnvidoSequence

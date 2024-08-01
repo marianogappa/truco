@@ -67,7 +67,7 @@ func TestFlor(t *testing.T) {
 			},
 		},
 		{
-			name: "if first player says flor and opponent does'nt have flor, actions are different, and 3 points are not won yet!",
+			name: "if first player says flor and opponent doesn't have flor, actions are different, and 3 points are not won yet!",
 			hands: []Hand{
 				{Unrevealed: []Card{{Number: 1, Suit: ORO}, {Number: 2, Suit: ORO}, {Number: 3, Suit: ORO}}},  // 26
 				{Unrevealed: []Card{{Number: 4, Suit: COPA}, {Number: 5, Suit: ORO}, {Number: 6, Suit: ORO}}}, // no flor
@@ -120,6 +120,60 @@ func TestFlor(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "mano says envido, opponent says flor, turn should go to mano",
+			hands: []Hand{
+				{Unrevealed: []Card{{Number: 1, Suit: COPA}, {Number: 2, Suit: ORO}, {Number: 3, Suit: ORO}}}, // no flor
+				{Unrevealed: []Card{{Number: 4, Suit: ORO}, {Number: 5, Suit: ORO}, {Number: 6, Suit: ORO}}},  // flor
+			},
+			steps: []testStep{
+				{
+					action: NewActionSayEnvido(0),
+				},
+				{
+					action:                         NewActionSayFlor(1),
+					expectedPlayerTurnAfterRunning: _p(0),
+				},
+			},
+		},
+		{
+			name: "mano says truco, opponent says flor, mano doesn't have flor, turn should stay with opponent to answer thr truco",
+			hands: []Hand{
+				{Unrevealed: []Card{{Number: 1, Suit: COPA}, {Number: 2, Suit: ORO}, {Number: 3, Suit: ORO}}}, // no flor
+				{Unrevealed: []Card{{Number: 4, Suit: ORO}, {Number: 5, Suit: ORO}, {Number: 6, Suit: ORO}}},  // flor
+			},
+			steps: []testStep{
+				{
+					action: NewActionSayTruco(0),
+				},
+				{
+					action:                         NewActionSayFlor(1),
+					expectedPlayerTurnAfterRunning: _p(1),
+				},
+				{
+					action: NewActionSayTrucoQuiero(1),
+				},
+			},
+		},
+		{
+			name: "mano says flor, opponent says me achico, mano says me voy, there shouldn't be a reveal score action",
+			hands: []Hand{
+				{Unrevealed: []Card{{Number: 1, Suit: ORO}, {Number: 2, Suit: ORO}, {Number: 3, Suit: ORO}}}, // flor
+				{Unrevealed: []Card{{Number: 4, Suit: ORO}, {Number: 5, Suit: ORO}, {Number: 6, Suit: ORO}}}, // flor
+			},
+			steps: []testStep{
+				{
+					action: NewActionSayFlor(0),
+				},
+				{
+					action: NewActionSayConFlorMeAchico(1),
+				},
+				{
+					action:                           NewActionSayMeVoyAlMazo(0),
+					expectedPossibleActionNamesAfter: []string{CONFIRM_ROUND_FINISHED, CONFIRM_ROUND_FINISHED},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -169,11 +223,11 @@ func TestFlor(t *testing.T) {
 				}
 
 				if step.expectedPlayerTurnAfterRunning != nil {
-					assert.Equal(t, *step.expectedPlayerTurnAfterRunning, gameState.TurnPlayerID, "at step %v expected player turn %v but got %v", i, step.expectedPlayerTurnAfterRunning, gameState.TurnPlayerID)
+					assert.Equal(t, *step.expectedPlayerTurnAfterRunning, gameState.TurnPlayerID, "at step %v expected player turn %v but got %v", i, *step.expectedPlayerTurnAfterRunning, gameState.TurnPlayerID)
 				}
 
 				if step.expectedIsFinishedAfterRunning != nil {
-					assert.Equal(t, *step.expectedIsFinishedAfterRunning, gameState.EnvidoSequence.IsFinished(), "at step %v expected isFinished to be %v but wasn't", i, step.expectedIsFinishedAfterRunning)
+					assert.Equal(t, *step.expectedIsFinishedAfterRunning, gameState.EnvidoSequence.IsFinished(), "at step %v expected isFinished to be %v but wasn't", i, *step.expectedIsFinishedAfterRunning)
 				}
 			}
 		})

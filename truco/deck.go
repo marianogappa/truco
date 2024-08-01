@@ -200,6 +200,10 @@ func (d *deck) defaultDealHand() *Hand {
 		hand.Unrevealed = append(hand.Unrevealed, d.cards[i])
 	}
 	d.cards = d.cards[3:]
+	// if !hand.HasFlor() {
+	// 	d.shuffle()
+	// 	return d.defaultDealHand()
+	// }
 	return hand
 }
 

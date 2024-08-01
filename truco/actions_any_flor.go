@@ -16,23 +16,23 @@ const (
 
 type ActionSayFlor struct {
 	act
-	QuieroCost int
+	QuieroCost int `json:"quiero_cost"`
 }
 type ActionSayConFlorMeAchico struct {
 	act
-	Cost int
+	Cost int `json:"cost"`
 }
 type ActionSayContraflor struct {
 	act
-	QuieroCost int
+	QuieroCost int `json:"quiero_cost"`
 }
 type ActionSayContraflorAlResto struct {
 	act
-	QuieroCost int
+	QuieroCost int `json:"quiero_cost"`
 }
 type ActionSayConFlorQuiero struct {
 	act
-	Cost int
+	Cost int `json:"cost"`
 }
 type ActionSayFlorScore struct {
 	act
@@ -101,6 +101,9 @@ func (a ActionRevealFlorScore) IsPossible(g GameState) bool {
 	}
 	roundLog := g.RoundsLog[g.RoundNumber]
 	if roundLog.FlorWinnerPlayerID != a.PlayerID {
+		return false
+	}
+	if g.FlorSequence.FlorPointsAwarded {
 		return false
 	}
 	if !g.IsRoundFinished && g.Players[a.PlayerID].Score+roundLog.FlorPoints < g.RuleMaxPoints {
@@ -197,8 +200,8 @@ func (a ActionRevealFlorScore) Run(g *GameState) error {
 	for len(g.Players[a.PlayerID].Hand.Unrevealed) > 0 {
 		_ = g.Players[a.PlayerID].Hand.RevealCard(g.Players[a.PlayerID].Hand.Unrevealed[0])
 	}
-	if !g.tryAwardFlorPoints() {
-		return fmt.Errorf("cannot award flor points")
+	if ok, err := g.tryAwardFlorPoints(); !ok {
+		return fmt.Errorf("cannot award flor points: %w", err)
 	}
 	return nil
 }
@@ -213,96 +216,138 @@ func (g *GameState) anyFlorActionRun(a Action) error {
 }
 
 func finalizeFlorSequence(winnerPlayerID int, g *GameState) error {
-	cost, err := g.FlorSequence.Cost(g.RuleMaxPoints, g.Players[winnerPlayerID].Score, g.Players[g.OpponentOf(winnerPlayerID)].Score)
+	cost, err := g.FlorSequence.Cost(g.RuleMaxPoints, g.Players[winnerPlayerID].Score, g.Players[g.OpponentOf(winnerPlayerID)].Score, false)
 	if err != nil {
 		return err
 	}
 	g.RoundsLog[g.RoundNumber].FlorWinnerPlayerID = winnerPlayerID
 	g.RoundsLog[g.RoundNumber].FlorPoints = cost
-	g.tryAwardFlorPoints()
+	_, _ = g.tryAwardFlorPoints()
 	return nil
 }
 
-func (g *GameState) canAwardFlorPoints() bool {
+func (g *GameState) canAwardFlorPoints() (bool, error) {
 	if !g.RuleIsFlorEnabled {
-		return false
+		return false, fmt.Errorf("flor is not enabled")
 	}
 	wonBy := g.RoundsLog[g.RoundNumber].FlorWinnerPlayerID
 	if wonBy == -1 {
-		return false
+		return false, fmt.Errorf("no player won the flor")
 	}
 	if g.FlorSequence.FlorPointsAwarded {
-		return false
+		return false, fmt.Errorf("flor points already awarded")
 	}
 	// If the flor sequence was finished with "say_con_flor_me_achico", then
 	// the points can be awarded immediately even though the sequence wasn't accepted
 	// and the cards weren't revealed.
 	if !g.FlorSequence.IsEmpty() && g.FlorSequence.IsFinished() && g.FlorSequence.Sequence[len(g.FlorSequence.Sequence)-1] == SAY_CON_FLOR_ME_ACHICO {
-		return true
+		return true, nil
 	}
 	if !g.FlorSequence.WasAccepted() {
-		return false
+		return false, fmt.Errorf("flor sequence was not accepted")
 	}
 	if len(g.Players[wonBy].Hand.Revealed) != 3 {
-		return false
+		return false, fmt.Errorf("player %v has not revealed all cards", wonBy)
 	}
-	return true
+	return true, nil
 }
 
-func (g *GameState) tryAwardFlorPoints() bool {
-	if !g.canAwardFlorPoints() {
-		return false
+func (g *GameState) tryAwardFlorPoints() (bool, error) {
+	if ok, err := g.canAwardFlorPoints(); !ok {
+		return false, err
 	}
 	wonBy := g.RoundsLog[g.RoundNumber].FlorWinnerPlayerID
 	score := g.RoundsLog[g.RoundNumber].FlorPoints
 	g.Players[wonBy].Score += score
 	g.FlorSequence.FlorPointsAwarded = true
-	return true
+	return true, nil
 }
 
 func (a *ActionSayFlor) Enrich(g GameState) {
 	var (
-		youScore      = g.Players[a.GetPlayerID()].Score
-		theirScore    = g.Players[g.OpponentOf(a.GetPlayerID())].Score
-		quieroSeq, _  = g.EnvidoSequence.WithStep(SAY_CON_FLOR_QUIERO)
-		quieroCost, _ = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
+		seq, err0        = g.FlorSequence.WithStep(SAY_FLOR)
+		youScore         = g.Players[a.GetPlayerID()].Score
+		theirScore       = g.Players[g.OpponentOf(a.GetPlayerID())].Score
+		quieroSeq, err   = seq.WithStep(SAY_CON_FLOR_QUIERO)
+		quieroCost, err2 = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore, true)
 	)
+	if err0 != nil {
+		return
+	}
+	if err != nil {
+		panic(fmt.Errorf("when enriching %v: %w", a.GetName(), err))
+	}
+	if err2 != nil {
+		panic(fmt.Errorf("when enriching %v: %w", a.GetName(), err2))
+	}
 	a.QuieroCost = quieroCost
 }
 func (a *ActionSayContraflor) Enrich(g GameState) {
 	var (
-		youScore      = g.Players[a.GetPlayerID()].Score
-		theirScore    = g.Players[g.OpponentOf(a.GetPlayerID())].Score
-		quieroSeq, _  = g.EnvidoSequence.WithStep(SAY_CON_FLOR_QUIERO)
-		quieroCost, _ = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
+		seq, err0        = g.FlorSequence.WithStep(SAY_CONTRAFLOR)
+		youScore         = g.Players[a.GetPlayerID()].Score
+		theirScore       = g.Players[g.OpponentOf(a.GetPlayerID())].Score
+		quieroSeq, err   = seq.WithStep(SAY_CON_FLOR_QUIERO)
+		quieroCost, err2 = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore, true)
 	)
+	if err0 != nil {
+		return
+	}
+	if err != nil {
+		panic(fmt.Errorf("when enriching %v: %w", a.GetName(), err))
+	}
+	if err2 != nil {
+		panic(fmt.Errorf("when enriching %v: %w", a.GetName(), err2))
+	}
 	a.QuieroCost = quieroCost
 }
 func (a *ActionSayContraflorAlResto) Enrich(g GameState) {
 	var (
-		youScore      = g.Players[a.GetPlayerID()].Score
-		theirScore    = g.Players[g.OpponentOf(a.GetPlayerID())].Score
-		quieroSeq, _  = g.EnvidoSequence.WithStep(SAY_CON_FLOR_QUIERO)
-		quieroCost, _ = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
+		seq, err0        = g.FlorSequence.WithStep(SAY_CONTRAFLOR_AL_RESTO)
+		youScore         = g.Players[a.GetPlayerID()].Score
+		theirScore       = g.Players[g.OpponentOf(a.GetPlayerID())].Score
+		quieroSeq, err   = seq.WithStep(SAY_CON_FLOR_QUIERO)
+		quieroCost, err2 = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore, true)
 	)
+	if err0 != nil {
+		return
+	}
+	if err != nil {
+		panic(fmt.Errorf("when enriching %v: %w", a.GetName(), err))
+	}
+	if err2 != nil {
+		panic(fmt.Errorf("when enriching %v: %w", a.GetName(), err2))
+	}
 	a.QuieroCost = quieroCost
 }
 func (a *ActionSayConFlorMeAchico) Enrich(g GameState) {
 	var (
-		youScore        = g.Players[a.GetPlayerID()].Score
-		theirScore      = g.Players[g.OpponentOf(a.GetPlayerID())].Score
-		noQuieroSeq, _  = g.EnvidoSequence.WithStep(SAY_CON_FLOR_ME_ACHICO)
-		noQuieroCost, _ = noQuieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
+		seq, err0         = g.FlorSequence.WithStep(SAY_CON_FLOR_ME_ACHICO)
+		youScore          = g.Players[a.GetPlayerID()].Score
+		theirScore        = g.Players[g.OpponentOf(a.GetPlayerID())].Score
+		noQuieroCost, err = seq.Cost(g.RuleMaxPoints, youScore, theirScore, true)
 	)
+	if err0 != nil {
+		return
+	}
+	if err != nil {
+		panic(fmt.Errorf("when enriching %v: %w", a.GetName(), err))
+	}
 	a.Cost = noQuieroCost
 }
 func (a *ActionSayConFlorQuiero) Enrich(g GameState) {
 	var (
-		youScore      = g.Players[a.GetPlayerID()].Score
-		theirScore    = g.Players[g.OpponentOf(a.GetPlayerID())].Score
-		quieroSeq, _  = g.EnvidoSequence.WithStep(SAY_CON_FLOR_QUIERO)
-		quieroCost, _ = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
+		seq, err0       = g.FlorSequence.WithStep(SAY_CON_FLOR_QUIERO)
+		youScore        = g.Players[a.GetPlayerID()].Score
+		theirScore      = g.Players[g.OpponentOf(a.GetPlayerID())].Score
+		quieroCost, err = seq.Cost(g.RuleMaxPoints, youScore, theirScore, true)
 	)
+	if err0 != nil {
+		return
+	}
+	if err != nil {
+		panic(fmt.Errorf("when enriching %v: %w", a.GetName(), err))
+	}
 	a.Cost = quieroCost
 }
 func (a *ActionSayFlorScore) Enrich(g GameState) {
@@ -316,8 +361,16 @@ func (a *ActionRevealFlorScore) Enrich(g GameState) {
 }
 
 func (a ActionSayFlor) YieldsTurn(g GameState) bool {
-	// If the opponent doesn't have flor, then "flor" is just a declaration and the turn continues
-	return g.Players[g.OpponentOf(a.PlayerID)].Hand.HasFlor()
+	// If the opponent has flor too, it yields turn
+	if g.Players[g.OpponentOf(a.PlayerID)].Hand.HasFlor() {
+		return true
+	}
+	// If they don't, the turn should go to "mano", except if the opponent just said "truco"
+	actionsOpponent := _deserializeCurrentRoundActionsByPlayerID(g.OpponentOf(a.PlayerID), g)
+	if len(actionsOpponent) > 0 && actionsOpponent[len(actionsOpponent)-1].GetName() == SAY_TRUCO {
+		return false
+	}
+	return g.RoundTurnPlayerID != a.PlayerID
 }
 
 func (a ActionSayFlorSonBuenas) YieldsTurn(g GameState) bool {

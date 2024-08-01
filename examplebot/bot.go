@@ -233,20 +233,38 @@ func shouldAnyEnvido(gs truco.ClientGameState, aggresiveness string, log func(st
 }
 
 func shouldAnyFlor(gs truco.ClientGameState, aggresiveness string, log func(string, ...any)) bool {
-	// if "no quiero" is possible and saying no quiero means losing, return true
-	// possible := possibleActionsMap(gs)
-	// noQuieroActions := filter(possible, truco.NewActionSayConFlorMeAchico(gs.YouPlayerID))
-	// if len(noQuieroActions) > 0 {
-	// 	cost := noQuieroActions[0].(*truco.ActionSayConFlorMeAchico).Cost
-	// 	if gs.TheirScore+cost >= gs.RuleMaxPoints {
-	// 		return true
-	// 	}
-	// }
-	// //TODO
-	// return true
+	// If bot doesn't have flor, bot shouldn't say flor
+	if calculateFlorScore(gs) == 0 {
+		log("I don't have flor, so I'm not going to say flor.")
+		return false
+	}
 
-	// In principle let's always choose an action, since flor is unlikely to be matched once one has it
-	return true
+	possible := possibleActionsMap(gs)
+
+	// If human doesn't necessarily have flor, and bot has flor then bot should say flor
+	if quieroActions := filter(possible, truco.NewActionSayConFlorQuiero(gs.YouPlayerID)); len(quieroActions) == 0 {
+		log("Human doesn't necessarily have flor, so I'm going to say flor.")
+		return true
+	}
+
+	// if "no quiero" is possible and saying no quiero means losing, return true
+	noQuieroActions := filter(possible, truco.NewActionSayConFlorMeAchico(gs.YouPlayerID))
+	if len(noQuieroActions) > 0 {
+		log("Bot can say no quiero to flor, and saying no quiero might mean losing.")
+		cost := noQuieroActions[0].(*truco.ActionSayConFlorMeAchico).Cost
+		if gs.TheirScore+cost >= gs.RuleMaxPoints {
+			log("Bot should say quiero to flor, because bot loses otherwise.")
+			return true
+		}
+	}
+
+	// Both have flor and saying no quiero doesn't lose the game. At this point it depends on the score and the aggresiveness
+	log("Bot has flor, and human has flor. Bot's flor score is %v, and aggresiveness is: %v", calculateFlorScore(gs), aggresiveness)
+	return calculateFlorScore(gs) >= map[string]int{
+		"low":    31,
+		"normal": 29,
+		"high":   26,
+	}[aggresiveness]
 }
 
 func chooseFlorAction(gs truco.ClientGameState, aggresiveness string) truco.Action {
@@ -758,7 +776,7 @@ func (m Bot) ChooseAction(gs truco.ClientGameState) truco.Action {
 			return truco.NewActionSayConFlorMeAchico(gs.YouPlayerID)
 		}
 		if shouldFlor {
-			// This is the case where the bot initiates the envido
+			// This is the case where the bot initiates the flor
 			// Sometimes (<50%), a human player would hide their envido by not initiating, and hoping the other says it first
 			// TODO: should this chance based on aggresiveness?
 			if rand.Float64() < 0.67 {

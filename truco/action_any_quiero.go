@@ -93,7 +93,7 @@ func (a ActionSayEnvidoNoQuiero) Run(g *GameState) error {
 	}
 	g.EnvidoSequence.AddStep(a.GetName())
 	g.IsEnvidoFinished = true
-	cost, err := g.EnvidoSequence.Cost(g.RuleMaxPoints, g.Players[g.TurnPlayerID].Score, g.Players[g.TurnOpponentPlayerID].Score)
+	cost, err := g.EnvidoSequence.Cost(g.RuleMaxPoints, g.Players[g.TurnPlayerID].Score, g.Players[g.TurnOpponentPlayerID].Score, false)
 	if err != nil {
 		return err
 	}
@@ -170,11 +170,17 @@ func (a *ActionSayEnvidoQuiero) Enrich(g GameState) {
 		return
 	}
 	var (
-		youScore      = g.Players[a.GetPlayerID()].Score
-		theirScore    = g.Players[g.OpponentOf(a.GetPlayerID())].Score
-		quieroSeq, _  = g.EnvidoSequence.WithStep(SAY_ENVIDO_QUIERO)
-		quieroCost, _ = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
+		youScore         = g.Players[a.GetPlayerID()].Score
+		theirScore       = g.Players[g.OpponentOf(a.GetPlayerID())].Score
+		quieroSeq, err   = g.EnvidoSequence.WithStep(SAY_ENVIDO_QUIERO)
+		quieroCost, err2 = quieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore, true)
 	)
+	if err != nil {
+		panic(err)
+	}
+	if err2 != nil {
+		panic(err2)
+	}
 	a.Cost = quieroCost
 }
 
@@ -183,11 +189,17 @@ func (a *ActionSayEnvidoNoQuiero) Enrich(g GameState) {
 		return
 	}
 	var (
-		youScore        = g.Players[a.GetPlayerID()].Score
-		theirScore      = g.Players[g.OpponentOf(a.GetPlayerID())].Score
-		noQuieroSeq, _  = g.EnvidoSequence.WithStep(SAY_ENVIDO_NO_QUIERO)
-		noQuieroCost, _ = noQuieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore)
+		youScore           = g.Players[a.GetPlayerID()].Score
+		theirScore         = g.Players[g.OpponentOf(a.GetPlayerID())].Score
+		noQuieroSeq, err   = g.EnvidoSequence.WithStep(SAY_ENVIDO_NO_QUIERO)
+		noQuieroCost, err2 = noQuieroSeq.Cost(g.RuleMaxPoints, youScore, theirScore, true)
 	)
+	if err != nil {
+		panic(err)
+	}
+	if err2 != nil {
+		panic(err2)
+	}
 	a.Cost = noQuieroCost
 }
 

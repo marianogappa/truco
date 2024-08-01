@@ -17,6 +17,9 @@ func (a ActionSayMeVoyAlMazo) IsPossible(g GameState) bool {
 	if g.IsEnvidoFinished && !g.TrucoSequence.IsEmpty() && !g.TrucoSequence.IsFinished() {
 		return false
 	}
+	if NewActionRevealFlorScore(a.PlayerID).IsPossible(g) || NewActionRevealEnvidoScore(a.PlayerID).IsPossible(g) {
+		return false
+	}
 	return true
 }
 
