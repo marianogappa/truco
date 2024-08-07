@@ -210,5 +210,5 @@ func _doesTrucoActionRequireReminder(g GameState) bool {
 	lastAction := _deserializeCurrentRoundLastAction(g)
 	// If the last action wasn't a truco action, then an envido sequence
 	// got in the middle of the truco sequence. A reminder is needed.
-	return !slices.Contains[[]string]([]string{SAY_TRUCO, SAY_QUIERO_RETRUCO, SAY_QUIERO_VALE_CUATRO}, lastAction.GetName())
+	return !slices.Contains([]string{SAY_TRUCO, SAY_QUIERO_RETRUCO, SAY_QUIERO_VALE_CUATRO}, lastAction.GetName())
 }

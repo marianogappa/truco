@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"syscall/js"
 
-	"github.com/marianogappa/truco/examplebot"
+	"github.com/marianogappa/truco/examplebot/newbot"
 	"github.com/marianogappa/truco/truco"
 )
 
@@ -45,7 +45,7 @@ func trucoNew(this js.Value, p []js.Value) interface{} {
 	}
 	state = truco.New(opts...)
 
-	bot = examplebot.New()
+	bot = (newbot.New(newbot.WithDefaultLogger))
 
 	nbs, err := json.Marshal(state.ToClientGameState(0))
 	if err != nil {

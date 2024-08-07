@@ -183,16 +183,24 @@ func (es EnvidoSequence) WithStep(step string) (EnvidoSequence, error) {
 	return *newEs, nil
 }
 
-func calculateFaltaEnvidoCost(maxPoints, winnerScore, loserScore int) int {
-	// maxPoints is normally only 15 or 30, but if it's set to less then
-	// use the same rule as for 15, but using maxPoints instead.
-	if maxPoints < 15 {
-		return maxPoints - winnerScore
-	}
+func _calculateFaltaEnvidoCost15PointsStrategy(maxPoints, winnerScore, loserScore int) int {
+	return maxPoints - max(winnerScore, loserScore)
+}
+
+func _calculateFaltaEnvidoCost30PointsStrategy(maxPoints, winnerScore, loserScore int) int {
 	if winnerScore < 15 && loserScore < 15 {
 		return 15 - winnerScore
 	}
-	return 30 - max(winnerScore, loserScore)
+	return maxPoints - max(winnerScore, loserScore)
+}
+
+func calculateFaltaEnvidoCost(maxPoints, winnerScore, loserScore int) int {
+	// maxPoints is normally only 15 or 30, but if it's set to less then
+	// use the same rule as for 15, but using maxPoints instead.
+	if maxPoints <= 15 {
+		return _calculateFaltaEnvidoCost15PointsStrategy(maxPoints, winnerScore, loserScore)
+	}
+	return _calculateFaltaEnvidoCost30PointsStrategy(maxPoints, winnerScore, loserScore)
 }
 
 var (
