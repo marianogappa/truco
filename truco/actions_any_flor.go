@@ -365,12 +365,14 @@ func (a ActionSayFlor) YieldsTurn(g GameState) bool {
 	if g.Players[g.OpponentOf(a.PlayerID)].Hand.HasFlor() {
 		return true
 	}
-	// If they don't, the turn should go to "mano", except if the opponent just said "truco"
+	// If opponent just said "envido", answering "flor" should also yield turn
 	actionsOpponent := _deserializeCurrentRoundActionsByPlayerID(g.OpponentOf(a.PlayerID), g)
-	if len(actionsOpponent) > 0 && actionsOpponent[len(actionsOpponent)-1].GetName() == SAY_TRUCO {
-		return false
+	if len(actionsOpponent) > 0 && actionsOpponent[len(actionsOpponent)-1].GetName() == SAY_ENVIDO {
+		return true
 	}
-	return g.RoundTurnPlayerID != a.PlayerID
+	// Otherwise, don't yield, since "flor" is just a declaration, and current player continues
+	// by revealing a card, saying "truco" or saying "me voy al mazo".
+	return false
 }
 
 func (a ActionSayFlorSonBuenas) YieldsTurn(g GameState) bool {

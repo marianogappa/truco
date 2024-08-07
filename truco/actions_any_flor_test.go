@@ -174,6 +174,22 @@ func TestFlor(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "mano reveals card, opponent says flor, turn should stay with opponent",
+			hands: []Hand{
+				{Unrevealed: []Card{{Number: 1, Suit: COPA}, {Number: 2, Suit: ORO}, {Number: 3, Suit: ORO}}}, // no flor
+				{Unrevealed: []Card{{Number: 4, Suit: ORO}, {Number: 5, Suit: ORO}, {Number: 6, Suit: ORO}}},  // flor
+			},
+			steps: []testStep{
+				{
+					action: NewActionRevealCard(Card{Number: 1, Suit: COPA}, 0),
+				},
+				{
+					action:                         NewActionSayFlor(1),
+					expectedPlayerTurnAfterRunning: _p(1),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
