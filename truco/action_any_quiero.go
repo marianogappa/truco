@@ -10,7 +10,8 @@ type ActionSayEnvidoNoQuiero struct {
 }
 type ActionSayEnvidoQuiero struct {
 	act
-	Cost int `json:"cost"`
+	Cost   int  `json:"cost"`
+	Forced bool `json:"forced"`
 }
 type ActionSayTrucoQuiero struct {
 	act
@@ -18,6 +19,7 @@ type ActionSayTrucoQuiero struct {
 	// RequiresReminder is true if a player ran say_truco and the other player
 	// initiated an envido sequence. This action might seem out of context.
 	RequiresReminder bool `json:"requires_reminder"`
+	Forced           bool `json:"forced"`
 }
 type ActionSayTrucoNoQuiero struct {
 	act
@@ -156,6 +158,7 @@ func (a *ActionSayTrucoQuiero) Enrich(g GameState) {
 	quieroSeq, _ := g.TrucoSequence.WithStep(SAY_TRUCO_QUIERO)
 	quieroCost := quieroSeq.Cost()
 	a.Cost = quieroCost
+	a.Forced = g.Players[g.OpponentOf(a.PlayerID)].Score == g.RuleMaxPoints-1
 }
 
 func (a *ActionSayTrucoNoQuiero) Enrich(g GameState) {
@@ -182,6 +185,7 @@ func (a *ActionSayEnvidoQuiero) Enrich(g GameState) {
 		panic(err2)
 	}
 	a.Cost = quieroCost
+	a.Forced = g.Players[g.OpponentOf(a.PlayerID)].Score == g.RuleMaxPoints-1
 }
 
 func (a *ActionSayEnvidoNoQuiero) Enrich(g GameState) {
