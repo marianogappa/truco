@@ -1,12 +1,17 @@
 # Truco
 
+https://marianogappa.github.io/truco-argentino/
+
 Truco argentino implementation, featuring:
 
-- websocket-based client/server architecture
-- example terminal-based frontend
-- example React-based frontend
-- a simple, documented interface for making your own frontend
-- example bot, and a simple, documented interface for making your own
+- [websocket-based client/server architecture](https://github.com/marianogappa/truco/tree/main/server)
+- [example terminal-based frontend](https://github.com/marianogappa/truco/blob/main/exampleclient/websocket_client.go)
+- [example React-based frontend](https://github.com/marianogappa/truco-argentino), and a simple, [documented](https://github.com/marianogappa/truco/blob/main/CONTRIBUTING.md#making-your-own-frontend) interface for making your own frontend
+- [example bot](https://github.com/marianogappa/truco/blob/main/examplebot/newbot/bot.go), and a simple, [documented](https://github.com/marianogappa/truco/blob/main/CONTRIBUTING.md#making-your-own-bot) interface for making your own
+
+![game](https://github.com/user-attachments/assets/c85b7a6d-a6c9-4556-a1ac-da74150478e6)
+
+
 
 <img width="1512" alt="Screenshot 2024-06-23 at 19 26 11" src="https://github.com/marianogappa/truco/assets/1078546/881e7204-f1a6-4de2-a0b5-60faa43b4fac">
 
@@ -78,11 +83,11 @@ If the server dies, state is gone. If client dies, you can simply reconnect to t
 
 ### I don't like your UI
 
-It's just an example UI. I encourage you to implement a web-based UI (that's you @devblac). You may browse the documentation and the existing UI to guide your implementation.
+It's just an example UI. I encourage you to [implement your own frontend](https://github.com/marianogappa/truco/blob/main/CONTRIBUTING.md#making-your-own-frontend). You may [browse the documentation](https://github.com/marianogappa/truco/blob/main/CONTRIBUTING.md) and the [existing React-based UI code](https://github.com/marianogappa/truco-argentino) and [terminal UI code](https://github.com/marianogappa/truco/blob/main/exampleclient/ui.go) to guide your implementation.
 
 ### I don't like your Bot
 
-It's just an example bot, which beats me. I encourage you to implement your own bot. You may browse the documentation and the existing bot to guide your implementation.
+It's just an example bot, which beats me. I encourage you to [implement your own bot](https://github.com/marianogappa/truco/blob/main/CONTRIBUTING.md#making-your-own-bot). You may [browse the documentation](https://github.com/marianogappa/truco/blob/main/CONTRIBUTING.md) and the [existing bot code](https://github.com/marianogappa/truco/blob/main/examplebot/newbot/bot.go) to guide your implementation.
 
 ### Known issues / limitations
 
