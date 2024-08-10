@@ -1,6 +1,12 @@
 # Truco
 
-Truco argentino implementation, using websocket-based client/server architecture and example terminal-based frontend.
+Truco argentino implementation, featuring:
+
+- websocket-based client/server architecture
+- example terminal-based frontend
+- example React-based frontend
+- a simple, documented interface for making your own frontend
+- example bot, and a simple, documented interface for making your own
 
 <img width="1512" alt="Screenshot 2024-06-23 at 19 26 11" src="https://github.com/marianogappa/truco/assets/1078546/881e7204-f1a6-4de2-a0b5-60faa43b4fac">
 
@@ -66,10 +72,6 @@ $ truco player 1 retail-curves-bernard-affairs.trycloudflare.com
 $ truco player 2 retail-curves-bernard-affairs.trycloudflare.com
 ```
 
-### Project status
-
-It mostly works well, but it's not bug-free yet. Needs a little more battle-test. Help?
-
 ### Reconnect after issue
 
 If the server dies, state is gone. If client dies, you can simply reconnect to the same server and game goes on.
@@ -77,6 +79,10 @@ If the server dies, state is gone. If client dies, you can simply reconnect to t
 ### I don't like your UI
 
 It's just an example UI. I encourage you to implement a web-based UI (that's you @devblac). You may browse the documentation and the existing UI to guide your implementation.
+
+### I don't like your Bot
+
+It's just an example bot, which beats me. I encourage you to implement your own bot. You may browse the documentation and the existing bot to guide your implementation.
 
 ### Known issues / limitations
 

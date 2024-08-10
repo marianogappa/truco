@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 )
 
 // DefaultMaxPoints is the points a player must reach to win the game.
@@ -241,7 +240,7 @@ func (g *GameState) RunAction(action Action) error {
 
 	// Start new round if current round is finished
 	if !g.IsGameEnded && g.IsRoundFinished && len(g.RoundFinishedConfirmedPlayerIDs) == 2 {
-		fmt.Println("Starting new round...")
+		// fmt.Println("Starting new round...")
 		g.startNewRound()
 		return nil
 	}
@@ -275,7 +274,7 @@ func (g *GameState) RunAction(action Action) error {
 
 	g.PossibleActions = _serializeActions(possibleActions)
 
-	log.Printf("Possible actions: %v\n", possibleActions)
+	// log.Printf("Possible actions: %v\n", possibleActions)
 
 	return nil
 }

@@ -45,7 +45,7 @@ func trucoNew(this js.Value, p []js.Value) interface{} {
 	}
 	state = truco.New(opts...)
 
-	bot = (newbot.New(newbot.WithDefaultLogger))
+	bot = (newbot.New())
 
 	nbs, err := json.Marshal(state.ToClientGameState(0))
 	if err != nil {
@@ -71,7 +71,7 @@ func trucoRunAction(this js.Value, p []js.Value) interface{} {
 func trucoBotRunAction(this js.Value, p []js.Value) interface{} {
 	if !state.IsGameEnded {
 		action := bot.ChooseAction(state.ToClientGameState(1))
-		fmt.Println("Action chosen by bot:", action)
+		// fmt.Println("Action chosen by bot:", action)
 
 		err := state.RunAction(action)
 		if err != nil {
@@ -98,7 +98,6 @@ func _runAction(bs []byte) []byte {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Ran action:", string(bs))
 	nbs, err := json.Marshal(state.ToClientGameState(0))
 	if err != nil {
 		panic(err)
