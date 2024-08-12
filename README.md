@@ -89,6 +89,12 @@ It's just an example UI. I encourage you to [implement your own frontend](https:
 
 It's just an example bot, which beats me. I encourage you to [implement your own bot](https://github.com/marianogappa/truco/blob/main/CONTRIBUTING.md#making-your-own-bot). You may [browse the documentation](https://github.com/marianogappa/truco/blob/main/CONTRIBUTING.md) and the [existing bot code](https://github.com/marianogappa/truco/blob/main/examplebot/newbot/bot.go) to guide your implementation.
 
+## Technology stack
+
+- This truco engine is written 100% in Go
+- Terminal-based UI uses [Termbox](https://github.com/nsf/termbox-go)
+- React-based UI uses [TinyGo](https://tinygo.org/) with WASM target to transpile to WebAssembly, and the frontend itself is built in React
+
 ### Known issues / limitations
 
 - Don't resize your terminal. This is a go-termbox issue. Also, have a terminal with a decent viewport. That is on me mostly.
